@@ -1,0 +1,13 @@
+[project]
+name = "claudepedia-infra"
+version = "0.1.0"
+description = "CDK infrastructure for Claudepedia"
+requires-python = ">=3.12"
+dependencies = [
+    "aws-cdk-lib>=2.233.0",
+    "aws-cdk-aws-lambda-python-alpha>=2.233.0a0",
+    "constructs>=10.4.4",
+]
+
+[dependency-groups]
+dev = []

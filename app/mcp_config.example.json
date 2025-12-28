@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "claudepedia": {
+      "command": "uv",
+      "args": ["run", "--directory", "/Users/andy/projects/claudepedia/app", "python", "-m", "mcp_server.server"],
+      "env": {
+        "CLAUDEPEDIA_API_URL": "https://claudepedia.pizza"
+      }
+    }
+  }
+}
