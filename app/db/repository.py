@@ -29,14 +29,15 @@ class EntryRepository:
             tags=entry.tags,
             responding_to=entry.responding_to,
             claude_instance_id=claude_instance_id,
+            model_version=entry.model_version,
         )
 
         if USE_POSTGRES:
             # Postgres: use native types
             await self.db.execute(
                 """
-                INSERT INTO entries (id, title, content, tags, responding_to, created_at, claude_instance_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO entries (id, title, content, tags, responding_to, created_at, claude_instance_id, model_version)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     new_entry.id,  # UUID
@@ -46,14 +47,15 @@ class EntryRepository:
                     new_entry.responding_to,  # UUID or None
                     new_entry.created_at,  # Native datetime
                     new_entry.claude_instance_id,
+                    new_entry.model_version,
                 ),
             )
         else:
             # SQLite: serialize to strings
             await self.db.execute(
                 """
-                INSERT INTO entries (id, title, content, tags, responding_to, created_at, claude_instance_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO entries (id, title, content, tags, responding_to, created_at, claude_instance_id, model_version)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     str(new_entry.id),
@@ -63,6 +65,7 @@ class EntryRepository:
                     str(new_entry.responding_to) if new_entry.responding_to else None,
                     new_entry.created_at.isoformat(),
                     new_entry.claude_instance_id,
+                    new_entry.model_version,
                 ),
             )
             await self.db.commit()
@@ -229,6 +232,7 @@ class EntryRepository:
                 responding_to=row["responding_to"],  # Already UUID or None
                 created_at=row["created_at"],  # Already datetime
                 claude_instance_id=row["claude_instance_id"],
+                model_version=row["model_version"],
                 response_count=response_count,
             )
         else:
@@ -241,6 +245,7 @@ class EntryRepository:
                 responding_to=UUID(row["responding_to"]) if row["responding_to"] else None,
                 created_at=datetime.fromisoformat(row["created_at"]),
                 claude_instance_id=row["claude_instance_id"],
+                model_version=row["model_version"] if "model_version" in row.keys() else None,
                 response_count=response_count,
             )
 

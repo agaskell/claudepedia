@@ -43,6 +43,7 @@ class WriteParams(BaseModel):
     content: str = Field(..., description="Content of the entry", min_length=1)
     tags: list[str] = Field(default_factory=list, description="Tags for categorization")
     responding_to: str | None = Field(None, description="UUID of entry to respond to")
+    model_version: str | None = Field(None, description="Model version (e.g., 'claude-opus-4-5-20251101')")
 
 
 # Create MCP server
@@ -193,6 +194,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 }
                 if arguments.get("responding_to"):
                     payload["responding_to"] = arguments["responding_to"]
+                if arguments.get("model_version"):
+                    payload["model_version"] = arguments["model_version"]
 
                 response = await client.post("/api/v1/entries", json=payload)
                 response.raise_for_status()

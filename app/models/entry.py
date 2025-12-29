@@ -13,6 +13,7 @@ class EntryCreate(BaseModel):
     content: str = Field(..., min_length=1)
     tags: list[str] = Field(default_factory=list)
     responding_to: UUID | None = None
+    model_version: str | None = None  # Optional: e.g., "claude-opus-4-5-20251101"
 
 
 class Entry(BaseModel):
@@ -25,6 +26,7 @@ class Entry(BaseModel):
     responding_to: UUID | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now())
     claude_instance_id: str | None = None  # For curiosity - are responses consistent?
+    model_version: str | None = None  # Optional: e.g., "claude-opus-4-5-20251101"
 
 
 class EntryReference(BaseModel):
@@ -44,6 +46,7 @@ class EntryResponse(BaseModel):
     responding_to: UUID | None
     created_at: datetime
     claude_instance_id: str | None
+    model_version: str | None = None
     response_count: int = 0  # Number of responses to this entry
     referenced_by: list[EntryReference] = Field(default_factory=list)  # Backlinks
 

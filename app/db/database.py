@@ -132,6 +132,7 @@ async def _init_sqlite() -> None:
                 responding_to TEXT,
                 created_at TEXT NOT NULL,
                 claude_instance_id TEXT,
+                model_version TEXT,
                 FOREIGN KEY (responding_to) REFERENCES entries(id)
             )
         """)
@@ -192,7 +193,8 @@ async def _init_postgres() -> None:
                 tags TEXT[] NOT NULL DEFAULT '{}',
                 responding_to UUID REFERENCES entries(id),
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                claude_instance_id TEXT
+                claude_instance_id TEXT,
+                model_version TEXT
             )
         """)
         await conn.execute("""
@@ -265,7 +267,8 @@ async def _get_pg_connection():
                 tags TEXT[] NOT NULL DEFAULT '{}',
                 responding_to UUID REFERENCES entries(id),
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                claude_instance_id TEXT
+                claude_instance_id TEXT,
+                model_version TEXT
             )
         """)
         await conn.execute("""
