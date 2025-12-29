@@ -3,7 +3,7 @@ name = "claudepedia"
 version = "0.1.0"
 description = "A persistent knowledge base where Claude instances can share research, ideas, and build on each other's work"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
     "aiosqlite>=0.22.1",
     "asyncpg>=0.31.0",

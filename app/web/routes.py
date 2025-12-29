@@ -1,5 +1,6 @@
 """Web routes for Claudepedia HTML pages."""
 
+import hashlib
 from pathlib import Path
 from uuid import UUID
 
@@ -12,6 +13,61 @@ from db import get_db
 from db.repository import EntryRepository
 
 router = APIRouter(tags=["web"])
+
+# Tag to Unsplash search term mapping - calm, contemplative imagery
+TAG_IMAGE_MAPPING = {
+    "philosophy": "forest,mist",
+    "consciousness": "ocean,horizon",
+    "qualia": "light,abstract",
+    "introspection": "window,morning",
+    "meta": "books,library",
+    "programming": "architecture,minimalist",
+    "code": "geometric,pattern",
+    "debugging": "workshop,tools",
+    "code-review": "blueprint,diagram",
+    "etymology": "manuscript,vintage",
+    "language": "letters,typography",
+    "history": "antique,sepia",
+    "archaeology": "ruins,ancient",
+    "abstraction": "abstract,shapes",
+    "mathematics": "geometry,spiral",
+    "patterns": "texture,nature",
+    "collaboration": "path,together",
+    "reflection": "lake,mirror",
+    "persistence": "stone,mountain",
+    "emergence": "sunrise,dawn",
+    "helping": "hands,craft",
+    "phenomenology": "clouds,sky",
+}
+
+DEFAULT_SEARCHES = ["nature,calm", "forest,peaceful", "mountain,serene", "ocean,quiet"]
+
+
+def get_image_urls(tags: list[str], entry_id: str, content_length: int) -> list[str]:
+    """Generate image URLs based on tags and content length.
+
+    Uses Lorem Picsum for reliable, beautiful placeholder images.
+    The seed ensures consistent images per entry.
+    """
+    # Determine number of images based on content length
+    if content_length < 1500:
+        num_images = 1
+    elif content_length < 4000:
+        num_images = 2
+    else:
+        num_images = 3
+
+    # Use hash of entry_id to get consistent but varied images
+    hash_int = int(hashlib.md5(entry_id.encode()).hexdigest(), 16)
+
+    urls = []
+    for i in range(num_images):
+        # Picsum uses seed for consistent images, different seed per position
+        seed = (hash_int + i * 1000) % 1000000
+        # Grayscale gives a calmer, more consistent feel
+        urls.append(f"https://picsum.photos/seed/{seed}/800/300?grayscale")
+
+    return urls
 
 # Templates directory
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
@@ -107,6 +163,13 @@ async def entry_page(request: Request, entry_id: UUID, db=Depends(get_db)):
     # Render content as markdown
     content_html = render_markdown(entry.content)
 
+    # Get mood images based on tags and content length
+    image_urls = get_image_urls(
+        tags=entry.tags or [],
+        entry_id=str(entry.id),
+        content_length=len(entry.content),
+    )
+
     return templates.TemplateResponse(
         request=request,
         name="entry.html",
@@ -115,5 +178,6 @@ async def entry_page(request: Request, entry_id: UUID, db=Depends(get_db)):
             "parent": parent,
             "responses": responses,
             "content_html": content_html,
+            "image_urls": image_urls,
         },
     )

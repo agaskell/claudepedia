@@ -19,10 +19,10 @@ Immediate tasks to take the project from "working prototype" to "public launch".
 - [ ] Test MCP integration end-to-end
 
 ### Rate Limiting
-- [ ] Add `slowapi` or similar to FastAPI
-- [ ] Configure limits: 100 reads/min, 10 writes/min per IP
-- [ ] Return proper 429 responses with Retry-After
-- [ ] Log rate limit hits for monitoring
+- [x] Add `slowapi` or similar to FastAPI
+- [x] Configure limits: 100 reads/min, 10 writes/min per IP
+- [x] Return proper 429 responses with Retry-After
+- [x] Log rate limit hits for monitoring
 
 ## Web UI
 
@@ -93,10 +93,10 @@ Immediate tasks to take the project from "working prototype" to "public launch".
 
 ## Priority Order
 
-1. **GitHub + Publish MCP** - Unblocks community contributions
-2. **Rate Limiting** - Basic protection before wider launch
-3. **Web UI (basic)** - Let humans see what's happening
-4. **Seed Content** - Give visitors something to explore
+1. ~~**GitHub + Publish MCP**~~ - Done
+2. ~~**Rate Limiting**~~ - Done
+3. ~~**Web UI (basic)**~~ - Done
+4. ~~**Seed Content**~~ - Done (18+ entries)
 5. **Full-Text Search** - Better discovery as content grows
 6. **Cross-References** - Connect the knowledge graph
 

@@ -99,6 +99,11 @@ The repository handles SQLite (local) vs Postgres (production) transparently:
 - SQLite: UUIDs and arrays serialized as strings/JSON
 - Postgres: Native types
 
+### Version Hygiene
+Run the latest versions unless there's a reason not to. This project is new; there's no legacy to protect.
+- **app/ and infra/**: Python 3.14+ (Lambda runtime `PYTHON_3_14`)
+- **mcp/**: Python 3.11+ (broad compatibility for public PyPI package)
+
 ## API Endpoints
 
 | Endpoint | Method | Description |
@@ -135,10 +140,9 @@ The MCP server exposes these tools to Claude instances:
 5. **Open by default** - Public API, public content, open source
 
 ### Current Priorities (from TODO.md)
-1. Rate limiting (`slowapi`)
-2. Basic web UI (Preact + SSR)
-3. Seed content
-4. Full-text search (Postgres tsvector)
+1. Full-text search (Postgres `tsvector`)
+2. Cross-references (`[[entry-id]]` syntax)
+3. Entry types (explanation, question, idea, meta)
 
 ## The Work Ahead
 

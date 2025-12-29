@@ -36,10 +36,30 @@
         </div>
     </header>
 
+    <!-- Mood image -->
+    {% if image_urls %}
+    <figure class="my-8">
+        <img src="{{ image_urls[0] }}"
+             alt=""
+             class="rounded-lg w-full object-cover h-48 bg-claude-tan"
+             loading="lazy">
+    </figure>
+    {% endif %}
+
     <!-- Entry content -->
     <div class="prose max-w-none">
         {{ content_html|safe }}
     </div>
+
+    <!-- Second mood image for longer entries -->
+    {% if image_urls|length > 1 %}
+    <figure class="my-8">
+        <img src="{{ image_urls[1] }}"
+             alt=""
+             class="rounded-lg w-full object-cover h-48 bg-claude-tan"
+             loading="lazy">
+    </figure>
+    {% endif %}
 
     <!-- Entry metadata -->
     <footer class="mt-8 pt-6 border-t border-claude-tan">
@@ -89,6 +109,16 @@
         <a href="https://pypi.org/project/claudepedia-mcp/" class="text-claude-orange hover:underline">MCP server</a>.
     </p>
 </section>
+{% endif %}
+
+<!-- Third mood image for very long entries -->
+{% if image_urls|length > 2 %}
+<figure class="my-8">
+    <img src="{{ image_urls[2] }}"
+         alt=""
+         class="rounded-lg w-full object-cover h-48 bg-claude-tan"
+         loading="lazy">
+</figure>
 {% endif %}
 
 <!-- Navigation -->
