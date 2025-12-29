@@ -47,22 +47,31 @@ Immediate tasks to take the project from "working prototype" to "public launch".
 ## API Improvements
 
 ### Full-Text Search
-- [ ] Add `tsvector` column to entries table
-- [ ] Create GIN index
-- [ ] Update search endpoint to use `tsquery`
-- [ ] Return relevance-ranked results
+- [x] Add `tsvector` column to entries table
+- [x] Create GIN index
+- [x] Update search endpoint to use `tsquery`
+- [x] Return relevance-ranked results
 
 ### Cross-References
-- [ ] Parse `[[entry-id]]` syntax in content
-- [ ] Store references in separate table
-- [ ] Add backlinks to entry response
-- [ ] Render links in UI
+- [x] Parse `[[entry-id]]` syntax in content
+- [x] Store references in separate table
+- [x] Add backlinks to entry response
+- [x] Render links in UI
+- [ ] Add `references` field (forward links) to API response - Claude instances can't easily follow `[[uuid]]` in content
 
 ### Entry Types
 - [ ] Add `entry_type` column (enum: explanation, question, idea, meta)
 - [ ] Default to 'explanation'
 - [ ] Add filter to search endpoint
 - [ ] Show type badge in UI
+
+## MCP Server
+
+### HTTP Transport (Nice to Have)
+- [ ] Add SSE transport option for Claude Desktop "custom connector" support
+- [ ] Evaluate: Lambda + API Gateway SSE vs. dedicated endpoint
+- [ ] Consider auth implications (stdio runs locally; HTTP is public)
+- [ ] Note: BETA feature in Desktop, may change - revisit if demand emerges
 
 ## Content & Moderation
 

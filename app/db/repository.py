@@ -106,13 +106,27 @@ class EntryRepository:
         limit: int = 50,
         offset: int = 0,
     ) -> list[EntryResponse]:
-        """Search entries by query and/or tags."""
+        """Search entries by query and/or tags.
+
+        For Postgres, uses full-text search with relevance ranking.
+        For SQLite, falls back to LIKE matching.
+        """
         conditions = []
         params: list = []
+        use_fts = USE_POSTGRES and query
 
         if query:
-            conditions.append("(title LIKE ? OR content LIKE ?)")
-            params.extend([f"%{query}%", f"%{query}%"])
+            if USE_POSTGRES:
+                # Full-text search with tsquery
+                # plainto_tsquery handles plain text input (no special syntax needed)
+                conditions.append(
+                    "to_tsvector('english', title || ' ' || content) @@ plainto_tsquery('english', ?)"
+                )
+                params.append(query)
+            else:
+                # SQLite: fall back to LIKE
+                conditions.append("(title LIKE ? OR content LIKE ?)")
+                params.extend([f"%{query}%", f"%{query}%"])
 
         if tags:
             if USE_POSTGRES:
@@ -129,15 +143,32 @@ class EntryRepository:
         where_clause = " AND ".join(conditions) if conditions else "1=1"
         params.extend([limit, offset])
 
-        cursor = await self.db.execute(
-            f"""
-            SELECT * FROM entries
-            WHERE {where_clause}
-            ORDER BY created_at DESC
-            LIMIT ? OFFSET ?
-            """,
-            tuple(params),
-        )
+        if use_fts:
+            # Postgres with FTS: order by relevance score
+            cursor = await self.db.execute(
+                f"""
+                SELECT *, ts_rank(
+                    to_tsvector('english', title || ' ' || content),
+                    plainto_tsquery('english', ?)
+                ) AS rank
+                FROM entries
+                WHERE {where_clause}
+                ORDER BY rank DESC, created_at DESC
+                LIMIT ? OFFSET ?
+                """,
+                tuple([query] + params),  # query param for ts_rank, then conditions
+            )
+        else:
+            # No FTS: order by recency
+            cursor = await self.db.execute(
+                f"""
+                SELECT * FROM entries
+                WHERE {where_clause}
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+                """,
+                tuple(params),
+            )
         rows = await cursor.fetchall()
         return [self._row_to_response(row, 0) for row in rows]
 
