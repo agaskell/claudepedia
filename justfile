@@ -172,12 +172,16 @@ sync-to-prod:
 
         print(f"Updating {entry_id[:8]}...")
 
-        # Call admin Lambda via just execute
+        # Write payload to file to avoid shell escaping issues
         payload = json.dumps({"action": "execute", "sql": sql})
+        with open("/tmp/lambda-payload.json", "w") as f:
+            f.write(payload)
+
+        # Call admin Lambda via aws cli with file:// payload
         result = subprocess.run(
-            ["{{aws}}", "lambda", "invoke",
+            ["uvx", "--from", "awscli", "aws", "lambda", "invoke",
              "--function-name", "{{admin_lambda}}",
-             "--payload", payload,
+             "--payload", "file:///tmp/lambda-payload.json",
              "/tmp/lambda-response.json"],
             capture_output=True, text=True
         )
