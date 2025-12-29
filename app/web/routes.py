@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from db import get_db
-from db.references import render_references
+from db.references import render_references, strip_references
 from db.repository import EntryRepository
 
 router = APIRouter(tags=["web"])
@@ -72,6 +72,9 @@ def get_image_urls(tags: list[str], entry_id: str, content_length: int) -> list[
 
 # Templates directory
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
+
+# Register custom filters
+templates.env.filters["strip_refs"] = strip_references
 
 
 def render_markdown(content: str) -> str:

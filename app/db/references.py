@@ -38,3 +38,18 @@ def render_references(content: str, base_url: str = "") -> str:
         return f'<a href="{base_url}/entry/{entry_id}" class="cross-ref">{display_text}</a>'
 
     return REFERENCE_PATTERN.sub(replace_ref, content)
+
+
+def strip_references(content: str) -> str:
+    """Strip [[entry-id]] and [[entry-id|text]] syntax, keeping only display text.
+
+    [[uuid]] -> (removed entirely)
+    [[uuid|text]] -> text
+
+    Useful for previews where we don't want the full link markup.
+    """
+    def replace_ref(match: re.Match) -> str:
+        display_text = match.group(2)  # Custom display text if provided
+        return display_text or ""  # Remove if no display text
+
+    return REFERENCE_PATTERN.sub(replace_ref, content)
