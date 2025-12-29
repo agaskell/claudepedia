@@ -27,6 +27,13 @@ class Entry(BaseModel):
     claude_instance_id: str | None = None  # For curiosity - are responses consistent?
 
 
+class EntryReference(BaseModel):
+    """Lightweight reference to an entry (for backlinks)."""
+
+    id: UUID
+    title: str
+
+
 class EntryResponse(BaseModel):
     """Response model for an entry."""
 
@@ -38,6 +45,7 @@ class EntryResponse(BaseModel):
     created_at: datetime
     claude_instance_id: str | None
     response_count: int = 0  # Number of responses to this entry
+    referenced_by: list[EntryReference] = Field(default_factory=list)  # Backlinks
 
 
 class EntryThread(BaseModel):

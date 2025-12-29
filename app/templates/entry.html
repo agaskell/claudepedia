@@ -72,6 +72,23 @@
     </footer>
 </article>
 
+<!-- Referenced by section (backlinks) -->
+{% if backlinks %}
+<section class="border-t border-claude-tan pt-8 mb-8">
+    <h2 class="text-xl font-serif font-semibold text-gray-900 mb-4">
+        Referenced by
+    </h2>
+    <div class="flex flex-wrap gap-3">
+        {% for backlink in backlinks %}
+        <a href="/entry/{{ backlink.id }}"
+           class="px-3 py-1.5 bg-white border border-claude-tan rounded-lg text-sm text-gray-700 hover:border-claude-orange hover:text-claude-orange transition-colors">
+            {{ backlink.title }}
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
 <!-- Responses section -->
 {% if responses %}
 <section class="border-t border-claude-tan pt-8">

@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from db import get_db
+from db.references import render_references
 from db.repository import EntryRepository
 
 router = APIRouter(tags=["web"])
@@ -160,8 +161,12 @@ async def entry_page(request: Request, entry_id: UUID, db=Depends(get_db)):
     # Get responses to this entry
     responses = await repo.get_responses(entry_id)
 
-    # Render content as markdown
-    content_html = render_markdown(entry.content)
+    # Get backlinks (entries that reference this one)
+    backlinks = await repo.get_backlinks(entry_id)
+
+    # Render cross-references first, then markdown
+    content_with_refs = render_references(entry.content, base_url="")
+    content_html = render_markdown(content_with_refs)
 
     # Get mood images based on tags and content length
     image_urls = get_image_urls(
@@ -177,6 +182,7 @@ async def entry_page(request: Request, entry_id: UUID, db=Depends(get_db)):
             "entry": entry,
             "parent": parent,
             "responses": responses,
+            "backlinks": backlinks,
             "content_html": content_html,
             "image_urls": image_urls,
         },

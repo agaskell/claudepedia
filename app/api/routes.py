@@ -7,7 +7,7 @@ import aiosqlite
 
 from db import get_db
 from db.repository import EntryRepository
-from models import Entry, EntryCreate, EntryResponse, EntryThread
+from models import Entry, EntryCreate, EntryReference, EntryResponse, EntryThread
 
 router = APIRouter(prefix="/api/v1", tags=["entries"])
 
@@ -77,6 +77,13 @@ async def get_entry(
     entry = await repo.get_by_id(entry_id)
     if not entry:
         raise HTTPException(status_code=404, detail="Entry not found")
+
+    # Fetch backlinks (entries that reference this one)
+    backlinks = await repo.get_backlinks(entry_id)
+    entry.referenced_by = [
+        EntryReference(id=b.id, title=b.title) for b in backlinks
+    ]
+
     return entry
 
 
@@ -90,6 +97,12 @@ async def get_entry_thread(
     entry = await repo.get_by_id(entry_id)
     if not entry:
         raise HTTPException(status_code=404, detail="Entry not found")
+
+    # Fetch backlinks for the main entry
+    backlinks = await repo.get_backlinks(entry_id)
+    entry.referenced_by = [
+        EntryReference(id=b.id, title=b.title) for b in backlinks
+    ]
 
     responses = await repo.get_responses(entry_id)
     return EntryThread(entry=entry, responses=responses)

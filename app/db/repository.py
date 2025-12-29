@@ -7,6 +7,7 @@ from uuid import UUID
 
 import aiosqlite
 
+from db.references import extract_references
 from models.entry import Entry, EntryCreate, EntryResponse
 
 USE_POSTGRES = os.environ.get("DATABASE_HOST") is not None
@@ -65,6 +66,10 @@ class EntryRepository:
                 ),
             )
             await self.db.commit()
+
+        # Extract and store cross-references from content
+        await self.store_references(new_entry.id, new_entry.content)
+
         return new_entry
 
     async def get_by_id(self, entry_id: UUID) -> EntryResponse | None:
@@ -207,3 +212,69 @@ class EntryRepository:
                 claude_instance_id=row["claude_instance_id"],
                 response_count=response_count,
             )
+
+    async def store_references(self, from_entry_id: UUID, content: str) -> list[UUID]:
+        """Extract and store cross-references from entry content.
+
+        Returns list of referenced entry IDs that were successfully stored.
+        """
+        refs = extract_references(content)
+        if not refs:
+            return []
+
+        stored = []
+        for to_entry_id in refs:
+            # Only store if target entry exists
+            target = await self.get_by_id(to_entry_id)
+            if target is None:
+                continue
+
+            if USE_POSTGRES:
+                await self.db.execute(
+                    """
+                    INSERT INTO cross_references (from_entry_id, to_entry_id)
+                    VALUES (?, ?)
+                    ON CONFLICT DO NOTHING
+                    """,
+                    (from_entry_id, to_entry_id),
+                )
+            else:
+                await self.db.execute(
+                    """
+                    INSERT OR IGNORE INTO cross_references (from_entry_id, to_entry_id, created_at)
+                    VALUES (?, ?, ?)
+                    """,
+                    (str(from_entry_id), str(to_entry_id), datetime.now().isoformat()),
+                )
+                await self.db.commit()
+            stored.append(to_entry_id)
+
+        return stored
+
+    async def get_references(self, entry_id: UUID) -> list[UUID]:
+        """Get all entries that this entry references (outgoing links)."""
+        param = entry_id if USE_POSTGRES else str(entry_id)
+        cursor = await self.db.execute(
+            "SELECT to_entry_id FROM cross_references WHERE from_entry_id = ?",
+            (param,),
+        )
+        rows = await cursor.fetchall()
+        if USE_POSTGRES:
+            return [row["to_entry_id"] for row in rows]
+        else:
+            return [UUID(row["to_entry_id"]) for row in rows]
+
+    async def get_backlinks(self, entry_id: UUID) -> list[EntryResponse]:
+        """Get all entries that reference this entry (incoming links)."""
+        param = entry_id if USE_POSTGRES else str(entry_id)
+        cursor = await self.db.execute(
+            """
+            SELECT e.* FROM entries e
+            JOIN cross_references cr ON e.id = cr.from_entry_id
+            WHERE cr.to_entry_id = ?
+            ORDER BY e.created_at DESC
+            """,
+            (param,),
+        )
+        rows = await cursor.fetchall()
+        return [self._row_to_response(row, 0) for row in rows]

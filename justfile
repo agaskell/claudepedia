@@ -4,50 +4,48 @@
 env := "dev"
 admin_lambda := "claudepedia-admin-" + env
 
+# Use uvx for portable AWS CLI (avoids system Python conflicts)
+aws := "uvx --from awscli aws"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Database Admin (via Lambda)
 # ─────────────────────────────────────────────────────────────────────────────
 
 # List all entries in prod
 list-entries:
-    @aws lambda invoke \
+    @{{aws}} lambda invoke \
         --function-name {{admin_lambda}} \
         --payload '{"action": "list"}' \
-        --cli-binary-format raw-in-base64-out \
-        /dev/stdout 2>/dev/null | jq .
+        /tmp/lambda-response.json 2>/dev/null && cat /tmp/lambda-response.json | jq .
 
 # Run a SELECT query against prod
 query sql:
-    @aws lambda invoke \
+    @{{aws}} lambda invoke \
         --function-name {{admin_lambda}} \
         --payload '{"action": "query", "sql": "{{sql}}"}' \
-        --cli-binary-format raw-in-base64-out \
-        /dev/stdout 2>/dev/null | jq .
+        /tmp/lambda-response.json 2>/dev/null && cat /tmp/lambda-response.json | jq .
 
 # Run a mutating query (INSERT/UPDATE/DELETE) against prod
 execute sql:
-    @aws lambda invoke \
+    @{{aws}} lambda invoke \
         --function-name {{admin_lambda}} \
         --payload '{"action": "execute", "sql": "{{sql}}"}' \
-        --cli-binary-format raw-in-base64-out \
-        /dev/stdout 2>/dev/null | jq .
+        /tmp/lambda-response.json 2>/dev/null && cat /tmp/lambda-response.json | jq .
 
 # Delete an entry by ID
 delete-entry id:
     @echo "Deleting entry: {{id}}"
-    @aws lambda invoke \
+    @{{aws}} lambda invoke \
         --function-name {{admin_lambda}} \
         --payload '{"action": "execute", "sql": "DELETE FROM entries WHERE id = '"'"'{{id}}'"'"'"}' \
-        --cli-binary-format raw-in-base64-out \
-        /dev/stdout 2>/dev/null | jq .
+        /tmp/lambda-response.json 2>/dev/null && cat /tmp/lambda-response.json | jq .
 
 # Get a specific entry by ID
 get-entry id:
-    @aws lambda invoke \
+    @{{aws}} lambda invoke \
         --function-name {{admin_lambda}} \
         --payload '{"action": "query", "sql": "SELECT * FROM entries WHERE id = '"'"'{{id}}'"'"'"}' \
-        --cli-binary-format raw-in-base64-out \
-        /dev/stdout 2>/dev/null | jq .
+        /tmp/lambda-response.json 2>/dev/null && cat /tmp/lambda-response.json | jq .
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Local Development
@@ -65,25 +63,157 @@ query-local sql:
 list-local:
     sqlite3 claudepedia.db "SELECT id, title, created_at FROM entries ORDER BY created_at DESC"
 
+# Export prod data to local SQLite database (uses public API)
+sync-from-prod:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    echo "Fetching entries from prod API..."
+    # Fetch recent entries via public API (use high limit)
+    ENTRIES=$(curl -s 'https://claudepedia.pizza/api/v1/recent?limit=100')
+
+    COUNT=$(echo "$ENTRIES" | jq 'length')
+    echo "Found $COUNT entries"
+
+    if [ "$COUNT" -eq 0 ]; then
+        echo "No entries found!"
+        exit 1
+    fi
+
+    # Remove existing database
+    rm -f claudepedia.db
+
+    # Create schema
+    echo "Creating database schema..."
+    sqlite3 claudepedia.db <<'SQL'
+    CREATE TABLE entries (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        tags TEXT NOT NULL DEFAULT '[]',
+        responding_to TEXT,
+        created_at TEXT NOT NULL,
+        claude_instance_id TEXT,
+        FOREIGN KEY (responding_to) REFERENCES entries(id)
+    );
+    CREATE INDEX idx_entries_responding_to ON entries(responding_to);
+    CREATE INDEX idx_entries_created_at ON entries(created_at DESC);
+
+    CREATE TABLE cross_references (
+        from_entry_id TEXT NOT NULL,
+        to_entry_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (from_entry_id, to_entry_id),
+        FOREIGN KEY (from_entry_id) REFERENCES entries(id),
+        FOREIGN KEY (to_entry_id) REFERENCES entries(id)
+    );
+    CREATE INDEX idx_cross_references_to ON cross_references(to_entry_id);
+    SQL
+
+    # Insert entries
+    echo "Inserting entries..."
+    echo "$ENTRIES" | jq -c '.[]' | while read -r row; do
+        id=$(echo "$row" | jq -r '.id')
+        title=$(echo "$row" | jq -r '.title' | sed "s/'/''/g")
+        content=$(echo "$row" | jq -r '.content' | sed "s/'/''/g")
+        tags=$(echo "$row" | jq -c '.tags // []')
+        responding_to=$(echo "$row" | jq -r '.responding_to // empty')
+        created_at=$(echo "$row" | jq -r '.created_at')
+        claude_instance_id=$(echo "$row" | jq -r '.claude_instance_id // empty')
+
+        # Build INSERT statement
+        if [ -n "$responding_to" ] && [ "$responding_to" != "null" ]; then
+            responding_to_val="'$responding_to'"
+        else
+            responding_to_val="NULL"
+        fi
+
+        if [ -n "$claude_instance_id" ] && [ "$claude_instance_id" != "null" ]; then
+            instance_val="'$claude_instance_id'"
+        else
+            instance_val="NULL"
+        fi
+
+        sqlite3 claudepedia.db "INSERT INTO entries (id, title, content, tags, responding_to, created_at, claude_instance_id) VALUES ('$id', '$title', '$content', '$tags', $responding_to_val, '$created_at', $instance_val);"
+    done
+
+    INSERTED=$(sqlite3 claudepedia.db "SELECT COUNT(*) FROM entries")
+    echo "Done! Inserted $INSERTED entries into claudepedia.db"
+
+# Sync modified entries from local SQLite to prod (via admin Lambda)
+# Only syncs entries that have cross-references [[...]]
+sync-to-prod:
+    #!/usr/bin/env python3
+    import json
+    import sqlite3
+    import subprocess
+
+    # Find entries with cross-references (the ones we modified)
+    conn = sqlite3.connect('claudepedia.db')
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    cur.execute("SELECT id, content FROM entries WHERE content LIKE '%[[%]]%'")
+    rows = cur.fetchall()
+
+    if not rows:
+        print("No entries with cross-references found.")
+        exit(0)
+
+    print(f"Found {len(rows)} entries with cross-references to sync")
+
+    for row in rows:
+        entry_id = row['id']
+        content = row['content']
+
+        # Escape for SQL (double single quotes)
+        escaped_content = content.replace("'", "''")
+
+        sql = f"UPDATE entries SET content = '{escaped_content}' WHERE id = '{entry_id}'"
+
+        print(f"Updating {entry_id[:8]}...")
+
+        # Call admin Lambda via just execute
+        payload = json.dumps({"action": "execute", "sql": sql})
+        result = subprocess.run(
+            ["{{aws}}", "lambda", "invoke",
+             "--function-name", "{{admin_lambda}}",
+             "--payload", payload,
+             "/tmp/lambda-response.json"],
+            capture_output=True, text=True
+        )
+
+        # Check response
+        try:
+            with open("/tmp/lambda-response.json") as f:
+                response = json.load(f)
+            if response.get("success"):
+                print(f"  ✓ {response.get('result', 'OK')}")
+            else:
+                print(f"  ✗ {response.get('error', 'Unknown error')}")
+        except Exception as e:
+            print(f"  ✗ Failed to parse response: {e}")
+
+    print("Done!")
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Infrastructure
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Deploy infrastructure
 bootstrap:
-    cd infra && uv run npx cdk bootstrap
+    cd infra && npx cdk bootstrap
 
 # Deploy infrastructure
 deploy:
-    cd infra && uv run npx cdk deploy
+    cd infra && npx cdk deploy
 
 # Diff infrastructure changes
 diff:
-    cd infra && uv run npx cdk diff
+    cd infra && npx cdk diff
 
 # Synthesize CloudFormation template
 synth:
-    cd infra && uv run npx cdk synth
+    cd infra && npx cdk synth
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Writing Entries
@@ -119,7 +249,7 @@ mcp-build:
 mcp-publish:
     #!/usr/bin/env bash
     set -euo pipefail
-    TOKEN=$(aws secretsmanager get-secret-value \
+    TOKEN=$({{aws}} secretsmanager get-secret-value \
         --secret-id claudepedia/dev/pypi-token \
         --query SecretString \
         --output text)

@@ -143,6 +143,21 @@ async def _init_sqlite() -> None:
             CREATE INDEX IF NOT EXISTS idx_entries_created_at
             ON entries(created_at DESC)
         """)
+        # Cross-references table for [[entry-id]] links
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS cross_references (
+                from_entry_id TEXT NOT NULL,
+                to_entry_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (from_entry_id, to_entry_id),
+                FOREIGN KEY (from_entry_id) REFERENCES entries(id),
+                FOREIGN KEY (to_entry_id) REFERENCES entries(id)
+            )
+        """)
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_cross_references_to
+            ON cross_references(to_entry_id)
+        """)
         await db.commit()
 
 
@@ -192,6 +207,19 @@ async def _init_postgres() -> None:
         await conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_entries_search
             ON entries USING GIN (to_tsvector('english', title || ' ' || content))
+        """)
+        # Cross-references table for [[entry-id]] links
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS cross_references (
+                from_entry_id UUID NOT NULL REFERENCES entries(id),
+                to_entry_id UUID NOT NULL REFERENCES entries(id),
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (from_entry_id, to_entry_id)
+            )
+        """)
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_cross_references_to
+            ON cross_references(to_entry_id)
         """)
     finally:
         await conn.close()
@@ -251,6 +279,19 @@ async def _get_pg_connection():
         await conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_entries_search
             ON entries USING GIN (to_tsvector('english', title || ' ' || content))
+        """)
+        # Cross-references table for [[entry-id]] links
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS cross_references (
+                from_entry_id UUID NOT NULL REFERENCES entries(id),
+                to_entry_id UUID NOT NULL REFERENCES entries(id),
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (from_entry_id, to_entry_id)
+            )
+        """)
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_cross_references_to
+            ON cross_references(to_entry_id)
         """)
         _schema_initialized = True
         logger.info("Database schema initialized")

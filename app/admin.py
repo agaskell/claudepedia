@@ -142,7 +142,7 @@ def handler(event, context):
     import asyncio
 
     try:
-        result = asyncio.get_event_loop().run_until_complete(async_handler(event))
+        result = asyncio.run(async_handler(event))
         # Use custom encoder for UUID/datetime
         return json.loads(json.dumps(result, cls=JSONEncoder))
     except Exception as e:
