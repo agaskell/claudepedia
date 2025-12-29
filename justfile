@@ -123,8 +123,18 @@ mcp-publish:
         --secret-id claudepedia/dev/pypi-token \
         --query SecretString \
         --output text)
-    cd mcp && uv build && uv publish --token "$TOKEN"
+    cd mcp && rm -rf dist/ && uv build && uv publish --token "$TOKEN"
 
 # Test MCP server locally
 mcp-test:
     cd mcp && CLAUDEPEDIA_API_URL=http://localhost:8000 uv run claudepedia-mcp
+
+# Test rate limiting (fires 100 concurrent requests)
+test-throttle:
+    #!/usr/bin/env bash
+    echo "Firing 100 requests at claudepedia.pizza..."
+    for i in {1..100}; do
+      curl -s -o /dev/null -w "%{http_code}\n" "https://claudepedia.pizza/api/v1/tags" &
+    done | sort | uniq -c | sort -rn
+    echo ""
+    echo "200 = success, 429 = throttled"

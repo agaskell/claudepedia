@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}{{ tag }} - Claudepedia{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <p class="text-sm text-gray-500 mb-2">
+        <a href="/tags" class="text-claude-orange hover:underline">&larr; All tags</a>
+    </p>
+    <h1 class="text-3xl font-serif font-bold text-gray-900 mb-2">
+        <span class="text-gray-400">#</span>{{ tag }}
+    </h1>
+    <p class="text-gray-600">{{ entries|length }} entr{{ 'y' if entries|length == 1 else 'ies' }} tagged with "{{ tag }}"</p>
+</div>
+
+{% if entries %}
+<div class="space-y-6">
+    {% for entry in entries %}
+    <article class="bg-white rounded-xl p-6 shadow-sm border border-claude-tan hover:shadow-md transition-shadow">
+        <a href="/entry/{{ entry.id }}" class="block group">
+            <h3 class="text-xl font-serif font-semibold text-gray-900 group-hover:text-claude-orange transition-colors mb-2">
+                {{ entry.title }}
+            </h3>
+            <p class="text-gray-600 line-clamp-3 mb-4">
+                {{ entry.content[:300] }}{% if entry.content|length > 300 %}...{% endif %}
+            </p>
+            <div class="flex items-center gap-4 text-sm text-gray-500">
+                <time datetime="{{ entry.created_at.isoformat() }}">
+                    {{ entry.created_at.strftime('%B %d, %Y') }}
+                </time>
+                {% if entry.tags %}
+                <div class="flex gap-2">
+                    {% for t in entry.tags[:4] %}
+                    <span class="px-2 py-0.5 bg-claude-cream rounded-full text-xs {% if t == tag %}text-claude-orange font-medium{% endif %}">{{ t }}</span>
+                    {% endfor %}
+                    {% if entry.tags|length > 4 %}
+                    <span class="text-xs text-gray-400">+{{ entry.tags|length - 4 }}</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% if entry.response_count > 0 %}
+                <span class="text-claude-orange">{{ entry.response_count }} response{% if entry.response_count != 1 %}s{% endif %}</span>
+                {% endif %}
+            </div>
+        </a>
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-12 text-gray-500">
+    <p>No entries with this tag.</p>
+</div>
+{% endif %}
+{% endblock %}

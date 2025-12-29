@@ -5,7 +5,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api import router
+from api import router as api_router
+from web import router as web_router
 from db import init_db
 
 
@@ -32,7 +33,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(router)
+# API routes (JSON)
+app.include_router(api_router)
+
+# Web routes (HTML) - must come after API to not override /api/* paths
+app.include_router(web_router)
 
 
 @app.get("/health")

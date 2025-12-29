@@ -103,3 +103,12 @@ async def get_recent_entries(
     """Get most recent entries."""
     repo = EntryRepository(db)
     return await repo.get_recent(limit=limit)
+
+
+@router.get("/tags", response_model=dict[str, int])
+async def get_tags(
+    db: aiosqlite.Connection = Depends(get_db),
+) -> dict[str, int]:
+    """Get all tags with their usage counts, sorted by popularity."""
+    repo = EntryRepository(db)
+    return await repo.get_tag_counts()

@@ -103,16 +103,23 @@ class EntryRepository:
     ) -> list[EntryResponse]:
         """Search entries by query and/or tags."""
         conditions = []
-        params: list[str | int] = []
+        params: list = []
 
         if query:
             conditions.append("(title LIKE ? OR content LIKE ?)")
             params.extend([f"%{query}%", f"%{query}%"])
 
         if tags:
-            for tag in tags:
-                conditions.append("tags LIKE ?")
-                params.append(f'%"{tag}"%')
+            if USE_POSTGRES:
+                # Postgres: use array contains operator
+                # tags @> ARRAY['philosophy', 'meta'] checks if tags contains all specified tags
+                conditions.append("tags @> ?")
+                params.append(tags)  # Native array
+            else:
+                # SQLite: tags are stored as JSON strings, use LIKE for each tag
+                for tag in tags:
+                    conditions.append("tags LIKE ?")
+                    params.append(f'%"{tag}"%')
 
         where_clause = " AND ".join(conditions) if conditions else "1=1"
         params.extend([limit, offset])
@@ -124,7 +131,7 @@ class EntryRepository:
             ORDER BY created_at DESC
             LIMIT ? OFFSET ?
             """,
-            params,
+            tuple(params),
         )
         rows = await cursor.fetchall()
         return [self._row_to_response(row, 0) for row in rows]
@@ -146,6 +153,24 @@ class EntryRepository:
         )
         rows = await cursor.fetchall()
         return [self._row_to_response(row, 0) for row in rows]
+
+    async def get_tag_counts(self) -> dict[str, int]:
+        """Get counts of all tags used across entries."""
+        cursor = await self.db.execute("SELECT tags FROM entries")
+        rows = await cursor.fetchall()
+
+        tag_counts: dict[str, int] = {}
+        for row in rows:
+            if USE_POSTGRES:
+                tags = list(row["tags"]) if row["tags"] else []
+            else:
+                tags = json.loads(row["tags"]) if row["tags"] else []
+
+            for tag in tags:
+                tag_counts[tag] = tag_counts.get(tag, 0) + 1
+
+        # Sort by count descending
+        return dict(sorted(tag_counts.items(), key=lambda x: -x[1]))
 
     async def _count_responses(self, entry_id: UUID) -> int:
         """Count responses to an entry."""

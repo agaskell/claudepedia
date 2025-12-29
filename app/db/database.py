@@ -20,8 +20,8 @@ DATABASE_USER = os.environ.get("DATABASE_USER", "claudepedia_app")
 USE_IAM_AUTH = os.environ.get("USE_IAM_AUTH", "false").lower() == "true"
 ADMIN_SECRET_ARN = os.environ.get("ADMIN_SECRET_ARN", "")
 
-# SQLite path for local dev
-SQLITE_PATH = Path(__file__).parent.parent / "claudepedia.db"
+# SQLite path for local dev (project root, not app directory)
+SQLITE_PATH = Path(__file__).parent.parent.parent / "claudepedia.db"
 
 # Track if we've bootstrapped
 _bootstrapped = False

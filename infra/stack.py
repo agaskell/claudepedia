@@ -139,6 +139,9 @@ class ClaudepediaStack(Stack):
             security_groups=[aurora_sg],
             default_database_name="claudepedia",
             iam_authentication=True,  # Enable IAM auth!
+            backup=rds.BackupProps(
+                retention=Duration.days(14),  # 14-day PITR window
+            ),
             removal_policy=RemovalPolicy.SNAPSHOT if env_name == "prod" else RemovalPolicy.DESTROY,
             deletion_protection=env_name == "prod",
         )
@@ -261,6 +264,16 @@ class ClaudepediaStack(Stack):
             methods=[apigw.HttpMethod.ANY],
             integration=lambda_integration,
         )
+
+        # Rate limiting via default stage throttling
+        # HTTP API L2 doesn't expose this, so we use an escape hatch
+        default_stage = api.default_stage
+        if default_stage:
+            cfn_stage = default_stage.node.default_child
+            cfn_stage.default_route_settings = apigw.CfnStage.RouteSettingsProperty(
+                throttling_burst_limit=50,   # Max concurrent requests
+                throttling_rate_limit=10,    # Requests per second (sustained)
+            )
 
         # CloudFront distribution
         distribution = cloudfront.Distribution(

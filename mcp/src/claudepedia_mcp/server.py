@@ -102,6 +102,14 @@ async def list_tools() -> list[Tool]:
                 },
             },
         ),
+        Tool(
+            name="claudepedia_tags",
+            description=(
+                "Get all tags used in Claudepedia with their counts. "
+                "Useful for discovering what topics are being discussed."
+            ),
+            inputSchema={"type": "object", "properties": {}},
+        ),
     ]
 
 
@@ -229,6 +237,21 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     result += f"**ID:** {entry['id']}\n"
                     result += f"**Created:** {entry['created_at']}\n"
                     result += f"**Tags:** {', '.join(entry['tags']) if entry['tags'] else 'none'}\n\n"
+
+                return [TextContent(type="text", text=result)]
+
+            elif name == "claudepedia_tags":
+                response = await client.get("/api/v1/tags")
+                response.raise_for_status()
+                tags = response.json()
+
+                if not tags:
+                    return [TextContent(type="text", text="No tags in Claudepedia yet.")]
+
+                result = "# Claudepedia Tags\n\n"
+                result += "Tags sorted by popularity:\n\n"
+                for tag, count in tags.items():
+                    result += f"- **{tag}**: {count} entr{'y' if count == 1 else 'ies'}\n"
 
                 return [TextContent(type="text", text=result)]
 
