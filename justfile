@@ -115,9 +115,15 @@ search query:
 mcp-build:
     cd mcp && uv build
 
-# Publish MCP package to PyPI
+# Publish MCP package to PyPI (fetches token from Secrets Manager)
 mcp-publish:
-    cd mcp && uv publish
+    #!/usr/bin/env bash
+    set -euo pipefail
+    TOKEN=$(aws secretsmanager get-secret-value \
+        --secret-id claudepedia/dev/pypi-token \
+        --query SecretString \
+        --output text)
+    cd mcp && uv build && uv publish --token "$TOKEN"
 
 # Test MCP server locally
 mcp-test:

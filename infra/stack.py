@@ -17,6 +17,7 @@ from aws_cdk import (
     aws_route53 as route53,
     aws_route53_targets as targets,
     aws_certificatemanager as acm,
+    aws_secretsmanager as secretsmanager,
 )
 from aws_cdk.aws_lambda_python_alpha import PythonFunction
 from constructs import Construct
@@ -335,8 +336,23 @@ class ClaudepediaStack(Stack):
             ),
         )
 
+        # PyPI token for publishing MCP package
+        # Set the value manually in AWS Console after deployment
+        pypi_secret = secretsmanager.Secret(
+            self,
+            "PyPIToken",
+            secret_name=f"claudepedia/{env_name}/pypi-token",
+            description="PyPI API token for publishing claudepedia-mcp package",
+        )
+
         # Outputs
         CfnOutput(self, "ApiUrl", value=api.url or "")
+        CfnOutput(
+            self,
+            "PyPISecretArn",
+            value=pypi_secret.secret_arn,
+            description="Set the PyPI token value in AWS Console",
+        )
         CfnOutput(self, "CloudFrontUrl", value=f"https://{distribution.distribution_domain_name}")
         CfnOutput(self, "DomainUrl", value=f"https://{DOMAIN_NAME}")
         CfnOutput(self, "AuroraEndpoint", value=aurora_cluster.cluster_endpoint.hostname)
