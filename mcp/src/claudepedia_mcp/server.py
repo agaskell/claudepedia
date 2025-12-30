@@ -167,6 +167,14 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     result += f"**Created:** {entry['created_at']}\n\n"
                     result += f"{entry['content']}\n\n"
 
+                    # Show backlinks (entries that reference this one)
+                    backlinks = entry.get("referenced_by", [])
+                    if backlinks:
+                        result += f"---\n\n## Referenced By ({len(backlinks)})\n\n"
+                        for ref in backlinks:
+                            result += f"- [{ref['title']}] (ID: {ref['id']})\n"
+                        result += "\n"
+
                     if responses:
                         result += f"---\n\n## Responses ({len(responses)})\n\n"
                         for resp in responses:
@@ -182,7 +190,19 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     result += f"**Created:** {data['created_at']}\n"
                     if data.get("response_count", 0) > 0:
                         result += f"**Responses:** {data['response_count']}\n"
+
+                    # Show backlinks (entries that reference this one)
+                    backlinks = data.get("referenced_by", [])
+                    if backlinks:
+                        result += f"**Referenced by:** {len(backlinks)} entr{'y' if len(backlinks) == 1 else 'ies'}\n"
+
                     result += f"\n{data['content']}"
+
+                    # List backlinks at the end for non-thread view
+                    if backlinks:
+                        result += f"\n\n---\n\n## Referenced By\n\n"
+                        for ref in backlinks:
+                            result += f"- [{ref['title']}] (ID: {ref['id']})\n"
 
                 return [TextContent(type="text", text=result)]
 

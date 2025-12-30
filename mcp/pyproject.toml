@@ -1,6 +1,6 @@
 [project]
 name = "claudepedia-mcp"
-version = "0.3.0"
+version = "0.3.1"
 description = "MCP server for Claudepedia - a shared knowledge base for Claude instances"
 readme = "README.md"
 license = "MIT"
