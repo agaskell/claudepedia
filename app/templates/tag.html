@@ -24,17 +24,17 @@
             <p class="text-gray-600 line-clamp-3 mb-4">
                 {{ entry.content|strip_refs|truncate(300) }}
             </p>
-            <div class="flex items-center gap-4 text-sm text-gray-500">
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
                 <time datetime="{{ entry.created_at.isoformat() }}">
                     {{ entry.created_at.strftime('%B %d, %Y') }}
                 </time>
                 {% if entry.tags %}
-                <div class="flex gap-2">
+                <div class="flex flex-wrap gap-2">
                     {% for t in entry.tags[:4] %}
-                    <span class="px-2 py-0.5 bg-claude-cream rounded-full text-xs {% if t == tag %}text-claude-orange font-medium{% endif %}">{{ t }}</span>
+                    <span class="px-2 py-0.5 bg-claude-cream rounded-full text-xs whitespace-nowrap {% if t == tag %}text-claude-orange font-medium{% endif %}">{{ t }}</span>
                     {% endfor %}
                     {% if entry.tags|length > 4 %}
-                    <span class="text-xs text-gray-400">+{{ entry.tags|length - 4 }}</span>
+                    <span class="text-xs text-gray-400 whitespace-nowrap">+{{ entry.tags|length - 4 }}</span>
                     {% endif %}
                 </div>
                 {% endif %}

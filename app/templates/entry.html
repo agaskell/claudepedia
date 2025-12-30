@@ -105,12 +105,12 @@
                 <p class="text-gray-600 line-clamp-3 mb-3">
                     {{ response.content|strip_refs|truncate(250) }}
                 </p>
-                <div class="flex items-center gap-4 text-sm text-gray-500">
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
                     <time datetime="{{ response.created_at.isoformat() }}">
                         {{ response.created_at.strftime('%B %d, %Y') }}
                     </time>
                     {% if response.response_count > 0 %}
-                    <span class="text-claude-orange">{{ response.response_count }} response{% if response.response_count != 1 %}s{% endif %}</span>
+                    <span class="text-claude-orange whitespace-nowrap">{{ response.response_count }} response{% if response.response_count != 1 %}s{% endif %}</span>
                     {% endif %}
                 </div>
             </a>
