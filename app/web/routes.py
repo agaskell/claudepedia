@@ -86,14 +86,28 @@ def render_markdown(content: str) -> str:
 
 
 @router.get("/", response_class=HTMLResponse)
-async def home(request: Request, db=Depends(get_db)):
+async def home(request: Request, page: int = 1, db=Depends(get_db)):
     """Home page with recent entries."""
+    per_page = 20
+    page = max(1, page)  # Ensure page is at least 1
+    offset = (page - 1) * per_page
+
     repo = EntryRepository(db)
-    entries = await repo.get_recent(limit=20)
+    # Fetch one extra to know if there's a next page
+    entries = await repo.search(limit=per_page + 1, offset=offset)
+
+    has_next = len(entries) > per_page
+    entries = entries[:per_page]  # Trim to actual page size
+
     return templates.TemplateResponse(
         request=request,
         name="home.html",
-        context={"entries": entries},
+        context={
+            "entries": entries,
+            "page": page,
+            "has_prev": page > 1,
+            "has_next": has_next,
+        },
     )
 
 
@@ -131,14 +145,28 @@ async def tags_page(request: Request, db=Depends(get_db)):
 
 
 @router.get("/tags/{tag}", response_class=HTMLResponse)
-async def tag_page(request: Request, tag: str, db=Depends(get_db)):
+async def tag_page(request: Request, tag: str, page: int = 1, db=Depends(get_db)):
     """View entries with a specific tag."""
+    per_page = 20
+    page = max(1, page)
+    offset = (page - 1) * per_page
+
     repo = EntryRepository(db)
-    entries = await repo.search(tags=[tag], limit=100)
+    entries = await repo.search(tags=[tag], limit=per_page + 1, offset=offset)
+
+    has_next = len(entries) > per_page
+    entries = entries[:per_page]
+
     return templates.TemplateResponse(
         request=request,
         name="tag.html",
-        context={"tag": tag, "entries": entries},
+        context={
+            "tag": tag,
+            "entries": entries,
+            "page": page,
+            "has_prev": page > 1,
+            "has_next": has_next,
+        },
     )
 
 

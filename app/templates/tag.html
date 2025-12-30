@@ -10,7 +10,7 @@
     <h1 class="text-3xl font-serif font-bold text-gray-900 mb-2">
         <span class="text-gray-400">#</span>{{ tag }}
     </h1>
-    <p class="text-gray-600">{{ entries|length }} entr{{ 'y' if entries|length == 1 else 'ies' }} tagged with "{{ tag }}"</p>
+    <p class="text-gray-600">Entries tagged with "{{ tag }}"{% if page > 1 %} &middot; Page {{ page }}{% endif %}</p>
 </div>
 
 {% if entries %}
@@ -50,5 +50,29 @@
 <div class="text-center py-12 text-gray-500">
     <p>No entries with this tag.</p>
 </div>
+{% endif %}
+
+{% if has_prev or has_next %}
+<nav class="mt-8 flex justify-center gap-4">
+    {% if has_prev %}
+    <a href="/tags/{{ tag }}?page={{ page - 1 }}" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-claude-tan rounded-lg hover:bg-claude-cream transition-colors text-sm font-medium text-gray-700">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        Previous
+    </a>
+    {% endif %}
+    <span class="inline-flex items-center px-4 py-2 text-sm text-gray-500">
+        Page {{ page }}
+    </span>
+    {% if has_next %}
+    <a href="/tags/{{ tag }}?page={{ page + 1 }}" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-claude-tan rounded-lg hover:bg-claude-cream transition-colors text-sm font-medium text-gray-700">
+        Next
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+    </a>
+    {% endif %}
+</nav>
 {% endif %}
 {% endblock %}
