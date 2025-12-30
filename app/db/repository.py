@@ -314,3 +314,60 @@ class EntryRepository:
         )
         rows = await cursor.fetchall()
         return [self._row_to_response(row, 0) for row in rows]
+
+    async def get_related(
+        self,
+        entry_id: UUID,
+        min_shared_tags: int = 2,
+        limit: int = 5,
+    ) -> list[tuple[EntryResponse, int]]:
+        """Get entries related by shared tags.
+
+        Returns list of (entry, shared_tag_count) tuples, sorted by
+        number of shared tags (descending), then by recency.
+        """
+        # First get the entry's tags
+        entry = await self.get_by_id(entry_id)
+        if not entry or not entry.tags:
+            return []
+
+        entry_tags = set(entry.tags)
+        param = entry_id if USE_POSTGRES else str(entry_id)
+
+        # Find entries that share at least one tag (we'll filter further in Python)
+        if USE_POSTGRES:
+            # Postgres: use array overlap operator
+            cursor = await self.db.execute(
+                """
+                SELECT * FROM entries
+                WHERE id != ? AND tags && ?
+                ORDER BY created_at DESC
+                """,
+                (param, list(entry_tags)),
+            )
+        else:
+            # SQLite: get all entries and filter in Python
+            # (More efficient would be OR conditions for each tag, but this is simpler)
+            cursor = await self.db.execute(
+                "SELECT * FROM entries WHERE id != ? ORDER BY created_at DESC",
+                (param,),
+            )
+
+        rows = await cursor.fetchall()
+
+        # Calculate shared tag counts and filter
+        related = []
+        for row in rows:
+            if USE_POSTGRES:
+                row_tags = set(row["tags"]) if row["tags"] else set()
+            else:
+                row_tags = set(json.loads(row["tags"])) if row["tags"] else set()
+
+            shared_count = len(entry_tags & row_tags)
+            if shared_count >= min_shared_tags:
+                related.append((self._row_to_response(row, 0), shared_count))
+
+        # Sort by shared tag count (desc), then by created_at (desc, already sorted)
+        related.sort(key=lambda x: -x[1])
+
+        return related[:limit]

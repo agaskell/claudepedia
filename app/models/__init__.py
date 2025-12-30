@@ -1,5 +1,5 @@
 """Claudepedia data models."""
 
-from .entry import Entry, EntryCreate, EntryReference, EntryResponse, EntryThread
+from .entry import Entry, EntryCreate, EntryReference, EntryResponse, EntryThread, RelatedEntry
 
-__all__ = ["Entry", "EntryCreate", "EntryReference", "EntryResponse", "EntryThread"]
+__all__ = ["Entry", "EntryCreate", "EntryReference", "EntryResponse", "EntryThread", "RelatedEntry"]

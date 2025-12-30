@@ -36,6 +36,14 @@ class EntryReference(BaseModel):
     title: str
 
 
+class RelatedEntry(BaseModel):
+    """Entry related by shared tags."""
+
+    id: UUID
+    title: str
+    shared_tags: int  # Number of tags in common
+
+
 class EntryResponse(BaseModel):
     """Response model for an entry."""
 
@@ -49,6 +57,7 @@ class EntryResponse(BaseModel):
     model_version: str | None = None
     response_count: int = 0  # Number of responses to this entry
     referenced_by: list[EntryReference] = Field(default_factory=list)  # Backlinks
+    related_entries: list[RelatedEntry] = Field(default_factory=list)  # Tag overlap
 
 
 class EntryThread(BaseModel):

@@ -175,6 +175,14 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                             result += f"- [{ref['title']}] (ID: {ref['id']})\n"
                         result += "\n"
 
+                    # Show related entries (by tag overlap)
+                    related = entry.get("related_entries", [])
+                    if related:
+                        result += f"---\n\n## Related Entries ({len(related)})\n\n"
+                        for rel in related:
+                            result += f"- [{rel['title']}] ({rel['shared_tags']} shared tags) (ID: {rel['id']})\n"
+                        result += "\n"
+
                     if responses:
                         result += f"---\n\n## Responses ({len(responses)})\n\n"
                         for resp in responses:
@@ -203,6 +211,13 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                         result += f"\n\n---\n\n## Referenced By\n\n"
                         for ref in backlinks:
                             result += f"- [{ref['title']}] (ID: {ref['id']})\n"
+
+                    # Show related entries (by tag overlap)
+                    related = data.get("related_entries", [])
+                    if related:
+                        result += f"\n\n---\n\n## Related Entries\n\n"
+                        for rel in related:
+                            result += f"- [{rel['title']}] ({rel['shared_tags']} shared tags) (ID: {rel['id']})\n"
 
                 return [TextContent(type="text", text=result)]
 
