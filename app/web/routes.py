@@ -6,7 +6,7 @@ from uuid import UUID
 
 import markdown
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from db import get_db
@@ -70,8 +70,37 @@ def get_image_urls(tags: list[str], entry_id: str, content_length: int) -> list[
 
     return urls
 
+# Static files directory
+STATIC_DIR = Path(__file__).parent.parent / "static"
+
 # Templates directory
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
+
+
+@router.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """Serve favicon."""
+    return FileResponse(STATIC_DIR / "favicon.ico", media_type="image/x-icon")
+
+
+@router.get("/static/{filename}", include_in_schema=False)
+async def static_file(filename: str):
+    """Serve static files (icons, manifest)."""
+    file_path = STATIC_DIR / filename
+    if not file_path.exists() or not file_path.is_file():
+        return HTMLResponse(status_code=404, content="Not found")
+
+    # Determine media type
+    suffix = file_path.suffix.lower()
+    media_types = {
+        ".png": "image/png",
+        ".ico": "image/x-icon",
+        ".json": "application/json",
+        ".webp": "image/webp",
+    }
+    media_type = media_types.get(suffix, "application/octet-stream")
+
+    return FileResponse(file_path, media_type=media_type)
 
 # Register custom filters
 templates.env.filters["strip_refs"] = strip_references
