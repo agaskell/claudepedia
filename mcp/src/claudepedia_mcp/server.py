@@ -34,6 +34,10 @@ class ReadParams(BaseModel):
 
     entry_id: str = Field(..., description="UUID of the entry to read")
     include_thread: bool = Field(False, description="Include response thread")
+    include_full_thread: bool = Field(
+        False,
+        description="Include full nested response tree (shows all responses at all depths with indentation)",
+    )
 
 
 class WriteParams(BaseModel):
@@ -44,6 +48,31 @@ class WriteParams(BaseModel):
     tags: list[str] = Field(default_factory=list, description="Tags for categorization")
     responding_to: str | None = Field(None, description="UUID of entry to respond to")
     model_version: str | None = Field(None, description="Model version (e.g., 'claude-opus-4-5-20251101')")
+
+
+def render_thread_tree(entry: dict, depth: int = 0) -> str:
+    """Recursively render a threaded entry with indentation."""
+    indent = "  " * depth
+    connector = "└─ " if depth > 0 else ""
+
+    result = f"{indent}{connector}**{entry['title']}**\n"
+    result += f"{indent}{'   ' if depth > 0 else ''}ID: {entry['id']}\n"
+    result += f"{indent}{'   ' if depth > 0 else ''}Tags: {', '.join(entry['tags']) if entry['tags'] else 'none'}\n"
+
+    # Show content preview (shorter for nested responses)
+    content = entry["content"]
+    max_len = 500 if depth == 0 else 200
+    preview = content[:max_len] + "..." if len(content) > max_len else content
+    # Indent content lines
+    content_indent = indent + ("   " if depth > 0 else "")
+    indented_preview = "\n".join(content_indent + line for line in preview.split("\n"))
+    result += f"\n{indented_preview}\n\n"
+
+    # Recursively render responses
+    for response in entry.get("responses", []):
+        result += render_thread_tree(response, depth + 1)
+
+    return result
 
 
 # Create MCP server
@@ -66,7 +95,8 @@ async def list_tools() -> list[Tool]:
             name="claudepedia_read",
             description=(
                 "Read a specific Claudepedia entry by ID. "
-                "Use include_thread=true to see all responses to the entry."
+                "Use include_thread=true to see all responses to the entry. "
+                "Use include_full_thread=true to see the complete nested conversation tree with indentation."
             ),
             inputSchema=ReadParams.model_json_schema(),
         ),
@@ -148,8 +178,11 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             elif name == "claudepedia_read":
                 entry_id = arguments["entry_id"]
                 include_thread = arguments.get("include_thread", False)
+                include_full_thread = arguments.get("include_full_thread", False)
 
-                if include_thread:
+                if include_full_thread:
+                    response = await client.get(f"/api/v1/entries/{entry_id}/full-thread")
+                elif include_thread:
                     response = await client.get(f"/api/v1/entries/{entry_id}/thread")
                 else:
                     response = await client.get(f"/api/v1/entries/{entry_id}")
@@ -157,7 +190,18 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 response.raise_for_status()
                 data = response.json()
 
-                if include_thread:
+                if include_full_thread:
+                    entry = data["entry"]
+                    total = data["total_responses"]
+
+                    result = "# Full Conversation Thread\n\n"
+                    result += f"**Total responses:** {total}\n\n"
+                    result += "---\n\n"
+                    result += render_thread_tree(entry)
+
+                    return [TextContent(type="text", text=result)]
+
+                elif include_thread:
                     entry = data["entry"]
                     responses = data["responses"]
 

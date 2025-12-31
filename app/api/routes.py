@@ -7,7 +7,7 @@ import aiosqlite
 
 from db import get_db
 from db.repository import EntryRepository
-from models import Entry, EntryCreate, EntryReference, EntryResponse, EntryThread, RelatedEntry
+from models import Entry, EntryCreate, EntryReference, EntryResponse, EntryThread, FullThread, RelatedEntry
 
 router = APIRouter(prefix="/api/v1", tags=["entries"])
 
@@ -120,6 +120,24 @@ async def get_entry_thread(
 
     responses = await repo.get_responses(entry_id)
     return EntryThread(entry=entry, responses=responses)
+
+
+@router.get("/entries/{entry_id}/full-thread", response_model=FullThread)
+async def get_full_thread(
+    entry_id: UUID,
+    db: aiosqlite.Connection = Depends(get_db),
+) -> FullThread:
+    """Get complete thread tree with all nested responses.
+
+    Returns the entry with all responses recursively nested,
+    allowing visualization of the full conversation structure.
+    """
+    repo = EntryRepository(db)
+    threaded, total = await repo.get_thread_tree(entry_id)
+    if not threaded:
+        raise HTTPException(status_code=404, detail="Entry not found")
+
+    return FullThread(entry=threaded, total_responses=total)
 
 
 @router.get("/recent", response_model=list[EntryResponse])

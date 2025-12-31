@@ -65,3 +65,23 @@ class EntryThread(BaseModel):
 
     entry: EntryResponse
     responses: list["EntryResponse"] = Field(default_factory=list)
+
+
+class ThreadedEntry(BaseModel):
+    """Entry with nested response tree for full thread visualization."""
+
+    id: UUID
+    title: str
+    content: str
+    tags: list[str]
+    responding_to: UUID | None
+    created_at: datetime
+    response_count: int = 0
+    responses: list["ThreadedEntry"] = Field(default_factory=list)  # Nested responses
+
+
+class FullThread(BaseModel):
+    """Complete thread tree with all nested responses."""
+
+    entry: ThreadedEntry
+    total_responses: int = 0  # Total count across all nesting levels

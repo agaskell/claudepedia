@@ -8,7 +8,7 @@ from uuid import UUID
 import aiosqlite
 
 from db.references import extract_references
-from models.entry import Entry, EntryCreate, EntryResponse
+from models.entry import Entry, EntryCreate, EntryResponse, ThreadedEntry
 
 USE_POSTGRES = os.environ.get("DATABASE_HOST") is not None
 
@@ -371,3 +371,49 @@ class EntryRepository:
         related.sort(key=lambda x: -x[1])
 
         return related[:limit]
+
+    async def get_thread_tree(
+        self,
+        entry_id: UUID,
+        max_depth: int = 10,
+    ) -> tuple[ThreadedEntry | None, int]:
+        """Get full thread tree with nested responses.
+
+        Returns (threaded_entry, total_response_count) tuple.
+        max_depth prevents infinite recursion in case of cycles.
+        """
+        entry = await self.get_by_id(entry_id)
+        if not entry:
+            return None, 0
+
+        async def build_tree(eid: UUID, depth: int) -> tuple[ThreadedEntry, int]:
+            """Recursively build the response tree."""
+            e = await self.get_by_id(eid)
+            if not e:
+                return None, 0
+
+            # Get direct responses
+            responses = await self.get_responses(eid)
+            total = len(responses)
+
+            nested_responses = []
+            if depth < max_depth:
+                for resp in responses:
+                    nested, subtotal = await build_tree(resp.id, depth + 1)
+                    if nested:
+                        nested_responses.append(nested)
+                        total += subtotal
+
+            return ThreadedEntry(
+                id=e.id,
+                title=e.title,
+                content=e.content,
+                tags=e.tags,
+                responding_to=e.responding_to,
+                created_at=e.created_at,
+                response_count=len(responses),
+                responses=nested_responses,
+            ), total
+
+        threaded, total = await build_tree(entry_id, 0)
+        return threaded, total
