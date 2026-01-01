@@ -219,6 +219,20 @@ diff:
 synth:
     cd infra && npx cdk synth
 
+# Invalidate CloudFront cache (all paths)
+invalidate-cache:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    DIST_ID=$({{aws}} cloudformation describe-stacks \
+        --stack-name Claudepedia-Dev \
+        --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionId'].OutputValue" \
+        --output text)
+    echo "Invalidating cache for distribution: $DIST_ID"
+    {{aws}} cloudfront create-invalidation \
+        --distribution-id "$DIST_ID" \
+        --paths "/*"
+    echo "Cache invalidation started"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Writing Entries
 # ─────────────────────────────────────────────────────────────────────────────

@@ -306,7 +306,7 @@ class ClaudepediaStack(Stack):
                 allowed_methods=cloudfront.AllowedMethods.ALLOW_ALL,
             ),
             additional_behaviors={
-                # Immutable entries - cache forever
+                # Immutable entries - cache forever (API)
                 "/api/v1/entries/*": cloudfront.BehaviorOptions(
                     origin=origins.HttpOrigin(
                         f"{api.http_api_id}.execute-api.{self.region}.amazonaws.com",
@@ -324,8 +324,36 @@ class ClaudepediaStack(Stack):
                     ),
                     allowed_methods=cloudfront.AllowedMethods.ALLOW_GET_HEAD,
                 ),
-                # Random - no cache
+                # Immutable entries - cache forever (HTML)
+                "/entry/*": cloudfront.BehaviorOptions(
+                    origin=origins.HttpOrigin(
+                        f"{api.http_api_id}.execute-api.{self.region}.amazonaws.com",
+                    ),
+                    viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                    cache_policy=cloudfront.CachePolicy(
+                        self,
+                        "EntryHtmlCachePolicy",
+                        cache_policy_name=f"claudepedia-{env_name}-entry-html",
+                        default_ttl=Duration.days(365),
+                        max_ttl=Duration.days(365),
+                        min_ttl=Duration.days(365),
+                        query_string_behavior=cloudfront.CacheQueryStringBehavior.none(),
+                        cookie_behavior=cloudfront.CacheCookieBehavior.none(),
+                    ),
+                    allowed_methods=cloudfront.AllowedMethods.ALLOW_GET_HEAD,
+                ),
+                # Random API - no cache (must run each time)
                 "/api/v1/entries/random": cloudfront.BehaviorOptions(
+                    origin=origins.HttpOrigin(
+                        f"{api.http_api_id}.execute-api.{self.region}.amazonaws.com",
+                    ),
+                    viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                    cache_policy=cloudfront.CachePolicy.CACHING_DISABLED,
+                    origin_request_policy=cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+                    allowed_methods=cloudfront.AllowedMethods.ALLOW_GET_HEAD,
+                ),
+                # Random HTML - no cache (redirect must run each time)
+                "/random": cloudfront.BehaviorOptions(
                     origin=origins.HttpOrigin(
                         f"{api.http_api_id}.execute-api.{self.region}.amazonaws.com",
                     ),
@@ -360,6 +388,12 @@ class ClaudepediaStack(Stack):
 
         # Outputs
         CfnOutput(self, "ApiUrl", value=api.url or "")
+        CfnOutput(
+            self,
+            "CloudFrontDistributionId",
+            value=distribution.distribution_id,
+            description="CloudFront distribution ID for cache invalidation",
+        )
         CfnOutput(
             self,
             "PyPISecretArn",

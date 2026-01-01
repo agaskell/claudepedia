@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 from datetime import datetime
 from uuid import UUID
 
@@ -11,6 +12,18 @@ from db.references import extract_references
 from models.entry import Entry, EntryCreate, EntryResponse, ThreadedEntry
 
 USE_POSTGRES = os.environ.get("DATABASE_HOST") is not None
+
+
+def _sanitize_tsquery_word(word: str) -> str | None:
+    """Sanitize a word for use in Postgres tsquery.
+
+    Strips special tsquery characters and returns None if nothing useful remains.
+    """
+    # Remove tsquery operators and special chars: & | ! ( ) : * < >
+    sanitized = re.sub(r"[&|!():*<>'\"]", "", word)
+    # Also remove leading/trailing whitespace and hyphens (can cause issues)
+    sanitized = sanitized.strip().strip("-")
+    return sanitized if sanitized else None
 
 
 class EntryRepository:
@@ -116,20 +129,35 @@ class EntryRepository:
         """
         conditions = []
         params: list = []
-        use_fts = USE_POSTGRES and query
 
+        # Split and sanitize query words upfront
+        words: list[str] = []
+        tsquery_parts = ""
         if query:
+            raw_words = query.split()
+            words = [w for w in (_sanitize_tsquery_word(rw) for rw in raw_words) if w]
+            if words:
+                tsquery_parts = " | ".join(f"{word}:*" for word in words)
+
+        use_fts = USE_POSTGRES and bool(words)
+
+        if words:
             if USE_POSTGRES:
-                # Full-text search with tsquery
-                # plainto_tsquery handles plain text input (no special syntax needed)
+                # Full-text search with OR semantics and prefix matching
+                # "knowledge persist" -> "knowledge:* | persist:*"
+                # This matches entries containing ANY term (OR), with partial word support
+                # ts_rank will still score entries matching more terms higher
                 conditions.append(
-                    "to_tsvector('english', title || ' ' || content) @@ plainto_tsquery('english', ?)"
+                    "to_tsvector('english', title || ' ' || content) @@ to_tsquery('english', ?)"
                 )
-                params.append(query)
+                params.append(tsquery_parts)
             else:
-                # SQLite: fall back to LIKE
-                conditions.append("(title LIKE ? OR content LIKE ?)")
-                params.extend([f"%{query}%", f"%{query}%"])
+                # SQLite: OR across all words, each checked against title and content
+                word_conditions = []
+                for word in words:
+                    word_conditions.append("(title LIKE ? OR content LIKE ?)")
+                    params.extend([f"%{word}%", f"%{word}%"])
+                conditions.append(f"({' OR '.join(word_conditions)})")
 
         if tags:
             if USE_POSTGRES:
@@ -152,14 +180,14 @@ class EntryRepository:
                 f"""
                 SELECT *, ts_rank(
                     to_tsvector('english', title || ' ' || content),
-                    plainto_tsquery('english', ?)
+                    to_tsquery('english', ?)
                 ) AS rank
                 FROM entries
                 WHERE {where_clause}
                 ORDER BY rank DESC, created_at DESC
                 LIMIT ? OFFSET ?
                 """,
-                tuple([query] + params),  # query param for ts_rank, then conditions
+                tuple([tsquery_parts] + params),  # tsquery for ts_rank, then conditions
             )
         else:
             # No FTS: order by recency
