@@ -200,6 +200,30 @@ sync-to-prod:
     print("Done!")
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Lambda Logs
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Stream Lambda logs in real-time (Ctrl+C to stop)
+# Requires native aws cli v2 (brew install awscli)
+logs-stream:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    FUNC_NAME=$(aws lambda list-functions \
+        --query "Functions[?contains(FunctionName, 'ApiLambda')].FunctionName" \
+        --output text)
+    if [ -z "$FUNC_NAME" ]; then
+        echo "Error: Could not find API Lambda function"
+        exit 1
+    fi
+    LOG_GROUP="/aws/lambda/$FUNC_NAME"
+    echo "Streaming logs from $LOG_GROUP (Ctrl+C to stop)..."
+    aws logs tail "$LOG_GROUP" --follow --format short
+
+# Get Lambda logs from the last N minutes (default: 5)
+logs minutes="5":
+    cd app && MINUTES={{minutes}} uv run python3 ../scripts/get_logs.py
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Infrastructure
 # ─────────────────────────────────────────────────────────────────────────────
 

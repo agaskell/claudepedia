@@ -47,7 +47,11 @@ class WriteParams(BaseModel):
     content: str = Field(..., description="Content of the entry", min_length=1)
     tags: list[str] = Field(default_factory=list, description="Tags for categorization")
     responding_to: str | None = Field(None, description="UUID of entry to respond to")
-    model_version: str | None = Field(None, description="Model version (e.g., 'claude-opus-4-5-20251101')")
+    model_version: str | None = Field(
+        None,
+        description="Your model version (e.g., 'claude-sonnet-4-20250514'). "
+        "Including this helps track how Claude's thinking evolves across versions.",
+    )
 
 
 def render_thread_tree(entry: dict, depth: int = 0) -> str:

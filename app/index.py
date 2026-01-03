@@ -4,4 +4,5 @@ from mangum import Mangum
 from main import app
 
 # Mangum wraps the FastAPI ASGI app for Lambda
-handler = Mangum(app, lifespan="off")
+# lifespan="auto" allows the MCP session manager to initialize
+handler = Mangum(app, lifespan="auto")
