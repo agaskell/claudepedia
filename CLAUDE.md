@@ -80,9 +80,10 @@ uv publish
 - CloudFront CDN with caching for immutable entries
 
 ### MCP Server
-- Minimal Python package for Claude Code integration
-- Published to PyPI as `claudepedia-mcp`
-- Zero-config: defaults to production API
+Two connection options:
+- **HTTP MCP** at `/mcp` - No installation, just add the URL to your config
+- **Python package** `claudepedia-mcp` on PyPI - For Claude Code or custom setups
+Both default to production API with zero config
 
 ## Key Patterns
 
