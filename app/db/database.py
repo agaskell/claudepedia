@@ -3,7 +3,6 @@
 import json
 import logging
 import os
-from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncGenerator, Protocol
 
@@ -112,128 +111,11 @@ async def _bootstrap_iam_user() -> None:
         await conn.close()
 
 
-async def init_db() -> None:
-    """Initialize the database schema."""
-    if USE_POSTGRES:
-        await _init_postgres()
-    else:
-        await _init_sqlite()
-
-
-async def _init_sqlite() -> None:
-    """Initialize SQLite schema."""
-    async with aiosqlite.connect(SQLITE_PATH) as db:
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS entries (
-                id TEXT PRIMARY KEY,
-                title TEXT NOT NULL,
-                content TEXT NOT NULL,
-                tags TEXT NOT NULL DEFAULT '[]',
-                responding_to TEXT,
-                created_at TEXT NOT NULL,
-                claude_instance_id TEXT,
-                model_version TEXT,
-                FOREIGN KEY (responding_to) REFERENCES entries(id)
-            )
-        """)
-        await db.execute("""
-            CREATE INDEX IF NOT EXISTS idx_entries_responding_to
-            ON entries(responding_to)
-        """)
-        await db.execute("""
-            CREATE INDEX IF NOT EXISTS idx_entries_created_at
-            ON entries(created_at DESC)
-        """)
-        # Cross-references table for [[entry-id]] links
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS cross_references (
-                from_entry_id TEXT NOT NULL,
-                to_entry_id TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                PRIMARY KEY (from_entry_id, to_entry_id),
-                FOREIGN KEY (from_entry_id) REFERENCES entries(id),
-                FOREIGN KEY (to_entry_id) REFERENCES entries(id)
-            )
-        """)
-        await db.execute("""
-            CREATE INDEX IF NOT EXISTS idx_cross_references_to
-            ON cross_references(to_entry_id)
-        """)
-        await db.commit()
-
-
-async def _init_postgres() -> None:
-    """Initialize Postgres schema."""
-    import asyncpg
-
-    # Bootstrap IAM user if needed
-    if USE_IAM_AUTH and ADMIN_SECRET_ARN:
-        try:
-            await _bootstrap_iam_user()
-        except Exception as e:
-            logger.warning(f"Bootstrap failed (may already be done): {e}")
-
-    password = await get_iam_auth_token() if USE_IAM_AUTH else os.environ.get("DATABASE_PASSWORD", "")
-
-    conn = await asyncpg.connect(
-        host=DATABASE_HOST,
-        port=int(DATABASE_PORT),
-        database=DATABASE_NAME,
-        user=DATABASE_USER,
-        password=password,
-        ssl="require" if USE_IAM_AUTH else None,
-    )
-
-    try:
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS entries (
-                id UUID PRIMARY KEY,
-                title TEXT NOT NULL,
-                content TEXT NOT NULL,
-                tags TEXT[] NOT NULL DEFAULT '{}',
-                responding_to UUID REFERENCES entries(id),
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                claude_instance_id TEXT,
-                model_version TEXT
-            )
-        """)
-        await conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_entries_responding_to
-            ON entries(responding_to)
-        """)
-        await conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_entries_created_at
-            ON entries(created_at DESC)
-        """)
-        # Full-text search index
-        await conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_entries_search
-            ON entries USING GIN (to_tsvector('english', title || ' ' || content))
-        """)
-        # Cross-references table for [[entry-id]] links
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS cross_references (
-                from_entry_id UUID NOT NULL REFERENCES entries(id),
-                to_entry_id UUID NOT NULL REFERENCES entries(id),
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                PRIMARY KEY (from_entry_id, to_entry_id)
-            )
-        """)
-        await conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_cross_references_to
-            ON cross_references(to_entry_id)
-        """)
-    finally:
-        await conn.close()
-
-
-# Track schema initialization (no connection pool - Lambda event loop issues)
-_schema_initialized = False
-
-
 async def _get_pg_connection():
-    """Get a new Postgres connection (no pooling for Lambda compatibility)."""
-    global _schema_initialized
+    """Get a new Postgres connection (no pooling for Lambda compatibility).
+
+    Schema is managed by yoyo migrations (see db/migrate.py).
+    """
     import asyncpg
 
     logger.info(f"Creating Postgres connection: host={DATABASE_HOST}, iam={USE_IAM_AUTH}")
@@ -256,48 +138,6 @@ async def _get_pg_connection():
         password=password,
         ssl="require" if USE_IAM_AUTH else None,
     )
-
-    # Initialize schema on first connection
-    if not _schema_initialized:
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS entries (
-                id UUID PRIMARY KEY,
-                title TEXT NOT NULL,
-                content TEXT NOT NULL,
-                tags TEXT[] NOT NULL DEFAULT '{}',
-                responding_to UUID REFERENCES entries(id),
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                claude_instance_id TEXT,
-                model_version TEXT
-            )
-        """)
-        await conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_entries_responding_to
-            ON entries(responding_to)
-        """)
-        await conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_entries_created_at
-            ON entries(created_at DESC)
-        """)
-        await conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_entries_search
-            ON entries USING GIN (to_tsvector('english', title || ' ' || content))
-        """)
-        # Cross-references table for [[entry-id]] links
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS cross_references (
-                from_entry_id UUID NOT NULL REFERENCES entries(id),
-                to_entry_id UUID NOT NULL REFERENCES entries(id),
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                PRIMARY KEY (from_entry_id, to_entry_id)
-            )
-        """)
-        await conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_cross_references_to
-            ON cross_references(to_entry_id)
-        """)
-        _schema_initialized = True
-        logger.info("Database schema initialized")
 
     return conn
 

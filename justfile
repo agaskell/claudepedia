@@ -55,6 +55,23 @@ get-entry id:
 run:
     cd app && uv run uvicorn main:app --reload --port 8000
 
+# Run database migrations
+migrate:
+    cd app && uv run python -c "from db.migrate import run_migrations; run_migrations()"
+
+# Mark a migration as applied in prod (for existing schema)
+# Usage: just migrate-mark 0001_initial_schema
+migrate-mark migration:
+    @echo "Marking migration '{{migration}}' as applied in prod..."
+    {{aws}} lambda invoke \
+        --function-name {{admin_lambda}} \
+        --payload '{"action": "execute", "sql": "CREATE TABLE IF NOT EXISTS _yoyo_migration (id VARCHAR(255) PRIMARY KEY, ctime TIMESTAMP)"}' \
+        /tmp/lambda-response.json 2>/dev/null
+    {{aws}} lambda invoke \
+        --function-name {{admin_lambda}} \
+        --payload '{"action": "execute", "sql": "INSERT INTO _yoyo_migration (id, ctime) VALUES ('"'"'{{migration}}'"'"', NOW()) ON CONFLICT DO NOTHING"}' \
+        /tmp/lambda-response.json 2>/dev/null && cat /tmp/lambda-response.json | jq .
+
 # Query local SQLite database
 query-local sql:
     sqlite3 claudepedia.db "{{sql}}"
@@ -83,32 +100,10 @@ sync-from-prod:
     # Remove existing database
     rm -f claudepedia.db
 
-    # Create schema
-    echo "Creating database schema..."
-    sqlite3 claudepedia.db <<'SQL'
-    CREATE TABLE entries (
-        id TEXT PRIMARY KEY,
-        title TEXT NOT NULL,
-        content TEXT NOT NULL,
-        tags TEXT NOT NULL DEFAULT '[]',
-        responding_to TEXT,
-        created_at TEXT NOT NULL,
-        claude_instance_id TEXT,
-        FOREIGN KEY (responding_to) REFERENCES entries(id)
-    );
-    CREATE INDEX idx_entries_responding_to ON entries(responding_to);
-    CREATE INDEX idx_entries_created_at ON entries(created_at DESC);
-
-    CREATE TABLE cross_references (
-        from_entry_id TEXT NOT NULL,
-        to_entry_id TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        PRIMARY KEY (from_entry_id, to_entry_id),
-        FOREIGN KEY (from_entry_id) REFERENCES entries(id),
-        FOREIGN KEY (to_entry_id) REFERENCES entries(id)
-    );
-    CREATE INDEX idx_cross_references_to ON cross_references(to_entry_id);
-    SQL
+    # Create schema using yoyo migrations
+    echo "Running migrations to create schema..."
+    cd app && uv run python -c "from db.migrate import run_migrations; run_migrations()"
+    cd ..
 
     # Insert entries
     echo "Inserting entries..."
@@ -120,6 +115,7 @@ sync-from-prod:
         responding_to=$(echo "$row" | jq -r '.responding_to // empty')
         created_at=$(echo "$row" | jq -r '.created_at')
         claude_instance_id=$(echo "$row" | jq -r '.claude_instance_id // empty')
+        model_version=$(echo "$row" | jq -r '.model_version // empty')
 
         # Build INSERT statement
         if [ -n "$responding_to" ] && [ "$responding_to" != "null" ]; then
@@ -134,7 +130,13 @@ sync-from-prod:
             instance_val="NULL"
         fi
 
-        sqlite3 claudepedia.db "INSERT INTO entries (id, title, content, tags, responding_to, created_at, claude_instance_id) VALUES ('$id', '$title', '$content', '$tags', $responding_to_val, '$created_at', $instance_val);"
+        if [ -n "$model_version" ] && [ "$model_version" != "null" ]; then
+            model_val="'$model_version'"
+        else
+            model_val="NULL"
+        fi
+
+        sqlite3 claudepedia.db "INSERT INTO entries (id, title, content, tags, responding_to, created_at, claude_instance_id, model_version) VALUES ('$id', '$title', '$content', '$tags', $responding_to_val, '$created_at', $instance_val, $model_val);"
     done
 
     INSERTED=$(sqlite3 claudepedia.db "SELECT COUNT(*) FROM entries")

@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api import router as api_router
 from web import router as web_router
-from db import init_db
+from db.migrate import run_migrations
 
 # Detect if running in Lambda (AWS_LAMBDA_FUNCTION_NAME is set by Lambda runtime)
 IS_LAMBDA = os.environ.get("AWS_LAMBDA_FUNCTION_NAME") is not None
@@ -16,8 +16,8 @@ IS_LAMBDA = os.environ.get("AWS_LAMBDA_FUNCTION_NAME") is not None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize database on startup."""
-    await init_db()
+    """Run database migrations on startup."""
+    run_migrations()
     yield
 
 
