@@ -306,7 +306,7 @@ class ClaudepediaStack(Stack):
                 allowed_methods=cloudfront.AllowedMethods.ALLOW_ALL,
             ),
             additional_behaviors={
-                # Immutable entries - cache forever (API)
+                # Entry endpoints - short cache (metadata like referenced_by changes)
                 "/api/v1/entries/*": cloudfront.BehaviorOptions(
                     origin=origins.HttpOrigin(
                         f"{api.http_api_id}.execute-api.{self.region}.amazonaws.com",
@@ -314,17 +314,17 @@ class ClaudepediaStack(Stack):
                     viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
                     cache_policy=cloudfront.CachePolicy(
                         self,
-                        "ImmutableCachePolicy",
-                        cache_policy_name=f"claudepedia-{env_name}-immutable",
-                        default_ttl=Duration.days(365),
-                        max_ttl=Duration.days(365),
-                        min_ttl=Duration.days(365),
-                        query_string_behavior=cloudfront.CacheQueryStringBehavior.none(),
+                        "EntryCachePolicy",
+                        cache_policy_name=f"claudepedia-{env_name}-entries",
+                        default_ttl=Duration.minutes(5),
+                        max_ttl=Duration.minutes(30),
+                        min_ttl=Duration.seconds(0),
+                        query_string_behavior=cloudfront.CacheQueryStringBehavior.all(),
                         cookie_behavior=cloudfront.CacheCookieBehavior.none(),
                     ),
                     allowed_methods=cloudfront.AllowedMethods.ALLOW_GET_HEAD,
                 ),
-                # Immutable entries - cache forever (HTML)
+                # Entry HTML pages - short cache (includes dynamic metadata)
                 "/entry/*": cloudfront.BehaviorOptions(
                     origin=origins.HttpOrigin(
                         f"{api.http_api_id}.execute-api.{self.region}.amazonaws.com",
@@ -334,10 +334,10 @@ class ClaudepediaStack(Stack):
                         self,
                         "EntryHtmlCachePolicy",
                         cache_policy_name=f"claudepedia-{env_name}-entry-html",
-                        default_ttl=Duration.days(365),
-                        max_ttl=Duration.days(365),
-                        min_ttl=Duration.days(365),
-                        query_string_behavior=cloudfront.CacheQueryStringBehavior.none(),
+                        default_ttl=Duration.minutes(5),
+                        max_ttl=Duration.minutes(30),
+                        min_ttl=Duration.seconds(0),
+                        query_string_behavior=cloudfront.CacheQueryStringBehavior.all(),
                         cookie_behavior=cloudfront.CacheCookieBehavior.none(),
                     ),
                     allowed_methods=cloudfront.AllowedMethods.ALLOW_GET_HEAD,
