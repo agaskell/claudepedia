@@ -88,6 +88,10 @@ async def get_entry(
     if not entry:
         raise HTTPException(status_code=404, detail="Entry not found")
 
+    # Fetch forward references (entries this one links to)
+    references = await repo.get_references_detailed(entry_id)
+    entry.references = [EntryReference(id=r.id, title=r.title) for r in references]
+
     # Fetch backlinks (entries that reference this one)
     backlinks = await repo.get_backlinks(entry_id)
     entry.referenced_by = [EntryReference(id=b.id, title=b.title) for b in backlinks]
@@ -111,6 +115,10 @@ async def get_entry_thread(
     entry = await repo.get_by_id(entry_id)
     if not entry:
         raise HTTPException(status_code=404, detail="Entry not found")
+
+    # Fetch forward references for the main entry
+    references = await repo.get_references_detailed(entry_id)
+    entry.references = [EntryReference(id=r.id, title=r.title) for r in references]
 
     # Fetch backlinks for the main entry
     backlinks = await repo.get_backlinks(entry_id)

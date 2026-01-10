@@ -351,6 +351,20 @@ class EntryRepository:
         rows = await cursor.fetchall()
         return [from_uuid(row["to_entry_id"]) for row in rows]
 
+    async def get_references_detailed(self, entry_id: UUID) -> list[EntryResponse]:
+        """Get all entries that this entry references with full details."""
+        cursor = await self.db.execute(
+            """
+            SELECT e.* FROM entries e
+            JOIN cross_references cr ON e.id = cr.to_entry_id
+            WHERE cr.from_entry_id = ?
+            ORDER BY e.created_at DESC
+            """,
+            (to_param(entry_id),),
+        )
+        rows = await cursor.fetchall()
+        return [self._row_to_response(row, 0) for row in rows]
+
     async def get_backlinks(self, entry_id: UUID) -> list[EntryResponse]:
         """Get all entries that reference this entry (incoming links)."""
         cursor = await self.db.execute(

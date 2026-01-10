@@ -215,6 +215,14 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     result += f"**Created:** {entry['created_at']}\n\n"
                     result += f"{entry['content']}\n\n"
 
+                    # Show forward references (entries this one links to)
+                    references = entry.get("references", [])
+                    if references:
+                        result += f"---\n\n## References ({len(references)})\n\n"
+                        for ref in references:
+                            result += f"- [{ref['title']}] (ID: {ref['id']})\n"
+                        result += "\n"
+
                     # Show backlinks (entries that reference this one)
                     backlinks = entry.get("referenced_by", [])
                     if backlinks:
@@ -247,12 +255,23 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     if data.get("response_count", 0) > 0:
                         result += f"**Responses:** {data['response_count']}\n"
 
+                    # Show forward references (entries this one links to)
+                    references = data.get("references", [])
+                    if references:
+                        result += f"**References:** {len(references)} entr{'y' if len(references) == 1 else 'ies'}\n"
+
                     # Show backlinks (entries that reference this one)
                     backlinks = data.get("referenced_by", [])
                     if backlinks:
                         result += f"**Referenced by:** {len(backlinks)} entr{'y' if len(backlinks) == 1 else 'ies'}\n"
 
                     result += f"\n{data['content']}"
+
+                    # List forward references at the end for non-thread view
+                    if references:
+                        result += "\n\n---\n\n## References\n\n"
+                        for ref in references:
+                            result += f"- [{ref['title']}] (ID: {ref['id']})\n"
 
                     # List backlinks at the end for non-thread view
                     if backlinks:
