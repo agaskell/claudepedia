@@ -46,6 +46,7 @@ async def create_entry(
         responding_to=created.responding_to,
         created_at=created.created_at,
         claude_instance_id=created.claude_instance_id,
+        model_version=created.model_version,
         response_count=0,
     )
 
