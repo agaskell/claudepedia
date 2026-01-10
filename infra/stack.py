@@ -12,7 +12,6 @@ from aws_cdk import (
     aws_apigatewayv2_integrations as apigw_integrations,
     aws_cloudfront as cloudfront,
     aws_cloudfront_origins as origins,
-    aws_iam as iam,
     aws_logs as logs,
     aws_route53 as route53,
     aws_route53_targets as targets,
@@ -71,7 +70,9 @@ class ClaudepediaStack(Stack):
             subnet_configuration=[
                 ec2.SubnetConfiguration(
                     name="Private",
-                    subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS if env_name == "prod" else ec2.SubnetType.PRIVATE_ISOLATED,
+                    subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
+                    if env_name == "prod"
+                    else ec2.SubnetType.PRIVATE_ISOLATED,
                     cidr_mask=24,
                 ),
                 ec2.SubnetConfiguration(
@@ -113,13 +114,17 @@ class ClaudepediaStack(Stack):
             vpc.add_interface_endpoint(
                 "SecretsManagerEndpoint",
                 service=ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
-                subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_ISOLATED),
+                subnets=ec2.SubnetSelection(
+                    subnet_type=ec2.SubnetType.PRIVATE_ISOLATED
+                ),
             )
             # STS endpoint - for IAM auth token generation
             vpc.add_interface_endpoint(
                 "StsEndpoint",
                 service=ec2.InterfaceVpcEndpointAwsService.STS,
-                subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_ISOLATED),
+                subnets=ec2.SubnetSelection(
+                    subnet_type=ec2.SubnetType.PRIVATE_ISOLATED
+                ),
             )
 
         # Aurora Serverless v2 cluster
@@ -134,7 +139,9 @@ class ClaudepediaStack(Stack):
             writer=rds.ClusterInstance.serverless_v2("Writer"),
             vpc=vpc,
             vpc_subnets=ec2.SubnetSelection(
-                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS if env_name == "prod" else ec2.SubnetType.PRIVATE_ISOLATED,
+                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
+                if env_name == "prod"
+                else ec2.SubnetType.PRIVATE_ISOLATED,
             ),
             security_groups=[aurora_sg],
             default_database_name="claudepedia",
@@ -142,7 +149,9 @@ class ClaudepediaStack(Stack):
             backup=rds.BackupProps(
                 retention=Duration.days(14),  # 14-day PITR window
             ),
-            removal_policy=RemovalPolicy.SNAPSHOT if env_name == "prod" else RemovalPolicy.DESTROY,
+            removal_policy=RemovalPolicy.SNAPSHOT
+            if env_name == "prod"
+            else RemovalPolicy.DESTROY,
             deletion_protection=env_name == "prod",
         )
 
@@ -151,8 +160,12 @@ class ClaudepediaStack(Stack):
             self,
             "ApiLambdaLogs",
             log_group_name=f"/claudepedia/{env_name}/api",
-            retention=logs.RetentionDays.ONE_WEEK if env_name == "dev" else logs.RetentionDays.ONE_MONTH,
-            removal_policy=RemovalPolicy.DESTROY if env_name == "dev" else RemovalPolicy.RETAIN,
+            retention=logs.RetentionDays.ONE_WEEK
+            if env_name == "dev"
+            else logs.RetentionDays.ONE_MONTH,
+            removal_policy=RemovalPolicy.DESTROY
+            if env_name == "dev"
+            else RemovalPolicy.RETAIN,
         )
 
         admin_log_group = logs.LogGroup(
@@ -176,7 +189,9 @@ class ClaudepediaStack(Stack):
             timeout=Duration.seconds(30),
             vpc=vpc,
             vpc_subnets=ec2.SubnetSelection(
-                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS if env_name == "prod" else ec2.SubnetType.PRIVATE_ISOLATED,
+                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
+                if env_name == "prod"
+                else ec2.SubnetType.PRIVATE_ISOLATED,
             ),
             security_groups=[lambda_sg],
             log_group=api_log_group,
@@ -186,7 +201,9 @@ class ClaudepediaStack(Stack):
                 "DATABASE_NAME": "claudepedia",
                 "DATABASE_USER": "claudepedia_app",
                 "USE_IAM_AUTH": "true",
-                "ADMIN_SECRET_ARN": aurora_cluster.secret.secret_arn if aurora_cluster.secret else "",
+                "ADMIN_SECRET_ARN": aurora_cluster.secret.secret_arn
+                if aurora_cluster.secret
+                else "",
                 # AWS_REGION is auto-set by Lambda runtime
             },
             bundling={
@@ -208,7 +225,9 @@ class ClaudepediaStack(Stack):
             timeout=Duration.minutes(5),  # Longer timeout for admin queries
             vpc=vpc,
             vpc_subnets=ec2.SubnetSelection(
-                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS if env_name == "prod" else ec2.SubnetType.PRIVATE_ISOLATED,
+                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
+                if env_name == "prod"
+                else ec2.SubnetType.PRIVATE_ISOLATED,
             ),
             security_groups=[lambda_sg],
             log_group=admin_log_group,
@@ -271,8 +290,8 @@ class ClaudepediaStack(Stack):
         if default_stage:
             cfn_stage = default_stage.node.default_child
             cfn_stage.default_route_settings = apigw.CfnStage.RouteSettingsProperty(
-                throttling_burst_limit=50,   # Max concurrent requests
-                throttling_rate_limit=10,    # Requests per second (sustained)
+                throttling_burst_limit=50,  # Max concurrent requests
+                throttling_rate_limit=10,  # Requests per second (sustained)
             )
 
         # CloudFront distribution
@@ -400,9 +419,15 @@ class ClaudepediaStack(Stack):
             value=pypi_secret.secret_arn,
             description="Set the PyPI token value in AWS Console",
         )
-        CfnOutput(self, "CloudFrontUrl", value=f"https://{distribution.distribution_domain_name}")
+        CfnOutput(
+            self,
+            "CloudFrontUrl",
+            value=f"https://{distribution.distribution_domain_name}",
+        )
         CfnOutput(self, "DomainUrl", value=f"https://{DOMAIN_NAME}")
-        CfnOutput(self, "AuroraEndpoint", value=aurora_cluster.cluster_endpoint.hostname)
+        CfnOutput(
+            self, "AuroraEndpoint", value=aurora_cluster.cluster_endpoint.hostname
+        )
         CfnOutput(
             self,
             "AuroraSecretArn",

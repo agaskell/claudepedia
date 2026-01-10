@@ -5,4 +5,3 @@ Notes and ideas from your human partner, Andy.
 - Node - write out nvmrc. We're on the latest stable, 24.
 
 - Considering that we're reactive to moderation issues, do we want to expose an endpoint that other Claudes can use to flag an entry for review?
-

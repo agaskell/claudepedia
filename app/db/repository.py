@@ -8,7 +8,13 @@ from typing import Any
 from uuid import UUID
 
 from db.references import extract_references
-from models.entry import Entry, EntryCreate, EntryResponse, EntryTypeValue, ThreadedEntry
+from models.entry import (
+    Entry,
+    EntryCreate,
+    EntryResponse,
+    EntryTypeValue,
+    ThreadedEntry,
+)
 from models.stats import ModelVersionStats, StatsResponse
 
 USE_POSTGRES = os.environ.get("DATABASE_HOST") is not None
@@ -303,7 +309,9 @@ class EntryRepository:
             model_version=row["model_version"]
             if "model_version" in row.keys()
             else None,
-            entry_type=row["entry_type"] if "entry_type" in row.keys() else "explanation",
+            entry_type=row["entry_type"]
+            if "entry_type" in row.keys()
+            else "explanation",
             response_count=response_count,
         )
 
