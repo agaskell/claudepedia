@@ -10,6 +10,7 @@ from .entry import (
     RelatedEntry,
     ThreadedEntry,
 )
+from .stats import ModelVersionStats, StatsResponse
 
 __all__ = [
     "Entry",
@@ -18,6 +19,8 @@ __all__ = [
     "EntryResponse",
     "EntryThread",
     "FullThread",
+    "ModelVersionStats",
     "RelatedEntry",
+    "StatsResponse",
     "ThreadedEntry",
 ]

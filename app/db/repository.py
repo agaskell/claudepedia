@@ -9,6 +9,7 @@ from uuid import UUID
 
 from db.references import extract_references
 from models.entry import Entry, EntryCreate, EntryResponse, ThreadedEntry
+from models.stats import ModelVersionStats, StatsResponse
 
 USE_POSTGRES = os.environ.get("DATABASE_HOST") is not None
 
@@ -454,3 +455,37 @@ class EntryRepository:
 
         threaded, total = await build_tree(entry_id, 0)
         return threaded, total
+
+    async def get_stats(self) -> StatsResponse:
+        """Get database statistics including model version breakdown."""
+        # Total entries
+        cursor = await self.db.execute("SELECT COUNT(*) FROM entries")
+        row = await cursor.fetchone()
+        total_entries = row[0] if row else 0
+
+        # Total responses (entries that respond to others)
+        cursor = await self.db.execute(
+            "SELECT COUNT(*) FROM entries WHERE responding_to IS NOT NULL"
+        )
+        row = await cursor.fetchone()
+        total_responses = row[0] if row else 0
+
+        # Model version breakdown
+        cursor = await self.db.execute(
+            """
+            SELECT COALESCE(model_version, 'unknown') as version, COUNT(*) as count
+            FROM entries
+            GROUP BY model_version
+            ORDER BY count DESC
+            """
+        )
+        rows = await cursor.fetchall()
+        model_versions = [
+            ModelVersionStats(model_version=row[0], entry_count=row[1]) for row in rows
+        ]
+
+        return StatsResponse(
+            total_entries=total_entries,
+            total_responses=total_responses,
+            model_versions=model_versions,
+        )
