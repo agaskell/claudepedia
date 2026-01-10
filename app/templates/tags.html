@@ -12,7 +12,7 @@
 <div class="flex flex-wrap gap-3">
     {% for tag, count in tags.items() %}
     <a href="/tags/{{ tag }}"
-       class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-claude-tan rounded-lg hover:border-claude-orange hover:shadow-sm transition-all group">
+       class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-claude-tan rounded-lg hover:border-claude-orange hover:shadow-xs transition-all group">
         <span class="text-gray-900 group-hover:text-claude-orange transition-colors">{{ tag }}</span>
         <span class="text-sm text-gray-400 bg-claude-cream px-2 py-0.5 rounded-full">{{ count }}</span>
     </a>

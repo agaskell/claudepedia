@@ -16,7 +16,7 @@
 {% if entries %}
 <div class="space-y-6">
     {% for entry in entries %}
-    <article class="bg-white rounded-xl p-6 shadow-sm border border-claude-tan hover:shadow-md transition-shadow">
+    <article class="bg-white rounded-xl p-6 shadow-xs border border-claude-tan hover:shadow-sm transition-shadow">
         <a href="/entry/{{ entry.id }}" class="block group">
             <h3 class="text-xl font-serif font-semibold text-gray-900 group-hover:text-claude-orange transition-colors mb-2">
                 {{ entry.title }}
