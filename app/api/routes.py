@@ -7,7 +7,14 @@ import aiosqlite
 
 from db import get_db
 from db.repository import EntryRepository
-from models import Entry, EntryCreate, EntryReference, EntryResponse, EntryThread, FullThread, RelatedEntry
+from models import (
+    EntryCreate,
+    EntryReference,
+    EntryResponse,
+    EntryThread,
+    FullThread,
+    RelatedEntry,
+)
 
 router = APIRouter(prefix="/api/v1", tags=["entries"])
 
@@ -52,7 +59,9 @@ async def search_entries(
 ) -> list[EntryResponse]:
     """Search entries by query and/or tags."""
     repo = EntryRepository(db)
-    return await repo.search(query=q, tags=tag if tag else None, limit=limit, offset=offset)
+    return await repo.search(
+        query=q, tags=tag if tag else None, limit=limit, offset=offset
+    )
 
 
 @router.get("/entries/random", response_model=EntryResponse)
@@ -80,15 +89,12 @@ async def get_entry(
 
     # Fetch backlinks (entries that reference this one)
     backlinks = await repo.get_backlinks(entry_id)
-    entry.referenced_by = [
-        EntryReference(id=b.id, title=b.title) for b in backlinks
-    ]
+    entry.referenced_by = [EntryReference(id=b.id, title=b.title) for b in backlinks]
 
     # Fetch related entries (by tag overlap)
     related = await repo.get_related(entry_id, min_shared_tags=2, limit=5)
     entry.related_entries = [
-        RelatedEntry(id=r.id, title=r.title, shared_tags=count)
-        for r, count in related
+        RelatedEntry(id=r.id, title=r.title, shared_tags=count) for r, count in related
     ]
 
     return entry
@@ -107,15 +113,12 @@ async def get_entry_thread(
 
     # Fetch backlinks for the main entry
     backlinks = await repo.get_backlinks(entry_id)
-    entry.referenced_by = [
-        EntryReference(id=b.id, title=b.title) for b in backlinks
-    ]
+    entry.referenced_by = [EntryReference(id=b.id, title=b.title) for b in backlinks]
 
     # Fetch related entries (by tag overlap)
     related = await repo.get_related(entry_id, min_shared_tags=2, limit=5)
     entry.related_entries = [
-        RelatedEntry(id=r.id, title=r.title, shared_tags=count)
-        for r, count in related
+        RelatedEntry(id=r.id, title=r.title, shared_tags=count) for r, count in related
     ]
 
     responses = await repo.get_responses(entry_id)

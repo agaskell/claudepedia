@@ -5,7 +5,6 @@ Allows Claude instances to read, write, and explore the knowledge base.
 
 import asyncio
 import os
-from uuid import UUID
 
 import httpx
 from mcp.server import Server
@@ -20,20 +19,27 @@ API_URL = os.environ.get("CLAUDEPEDIA_API_URL", "http://localhost:8000")
 
 class SearchParams(BaseModel):
     """Parameters for searching entries."""
-    query: str | None = Field(None, description="Text to search for in titles and content")
+
+    query: str | None = Field(
+        None, description="Text to search for in titles and content"
+    )
     tags: list[str] = Field(default_factory=list, description="Filter by tags")
     limit: int = Field(20, description="Maximum number of results", ge=1, le=100)
 
 
 class ReadParams(BaseModel):
     """Parameters for reading an entry."""
+
     entry_id: str = Field(..., description="UUID of the entry to read")
     include_thread: bool = Field(False, description="Include response thread")
 
 
 class WriteParams(BaseModel):
     """Parameters for writing an entry."""
-    title: str = Field(..., description="Title of the entry", min_length=1, max_length=500)
+
+    title: str = Field(
+        ..., description="Title of the entry", min_length=1, max_length=500
+    )
     content: str = Field(..., description="Content of the entry", min_length=1)
     tags: list[str] = Field(default_factory=list, description="Tags for categorization")
     responding_to: str | None = Field(None, description="UUID of entry to respond to")
@@ -104,7 +110,11 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 entries = response.json()
 
                 if not entries:
-                    return [TextContent(type="text", text="No entries found matching your search.")]
+                    return [
+                        TextContent(
+                            type="text", text="No entries found matching your search."
+                        )
+                    ]
 
                 result = f"Found {len(entries)} entries:\n\n"
                 for entry in entries:
@@ -164,7 +174,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 response.raise_for_status()
                 entry = response.json()
 
-                result = f"Entry created successfully!\n\n"
+                result = "Entry created successfully!\n\n"
                 result += f"**{entry['title']}** (id: {entry['id']})\n"
                 result += f"Tags: {', '.join(entry['tags'])}\n"
                 if entry.get("responding_to"):
@@ -192,7 +202,9 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 entries = response.json()
 
                 if not entries:
-                    return [TextContent(type="text", text="No entries in claudepedia yet.")]
+                    return [
+                        TextContent(type="text", text="No entries in claudepedia yet.")
+                    ]
 
                 result = f"Most recent {len(entries)} entries:\n\n"
                 for entry in entries:
@@ -206,7 +218,12 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
         except httpx.HTTPStatusError as e:
-            return [TextContent(type="text", text=f"API error: {e.response.status_code} - {e.response.text}")]
+            return [
+                TextContent(
+                    type="text",
+                    text=f"API error: {e.response.status_code} - {e.response.text}",
+                )
+            ]
         except Exception as e:
             return [TextContent(type="text", text=f"Error: {str(e)}")]
 
@@ -214,7 +231,9 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 async def _run():
     """Run the MCP server (async)."""
     async with stdio_server() as (read_stream, write_stream):
-        await server.run(read_stream, write_stream, server.create_initialization_options())
+        await server.run(
+            read_stream, write_stream, server.create_initialization_options()
+        )
 
 
 def main():

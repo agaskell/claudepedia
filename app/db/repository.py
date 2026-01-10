@@ -20,6 +20,7 @@ USE_POSTGRES = os.environ.get("DATABASE_HOST") is not None
 # Postgres uses native types. These adapters handle the conversion transparently.
 
 if USE_POSTGRES:
+
     def to_param(v: Any) -> Any:
         """Convert Python value to database parameter (Postgres: pass through)."""
         return v
@@ -41,6 +42,7 @@ if USE_POSTGRES:
         return False
 
 else:
+
     def to_param(v: Any) -> Any:
         """Convert Python value to database parameter (SQLite: serialize)."""
         if isinstance(v, UUID):
@@ -72,6 +74,7 @@ else:
 # Query Helpers
 # =============================================================================
 
+
 def _sanitize_tsquery_word(word: str) -> str | None:
     """Sanitize a word for use in Postgres tsquery.
 
@@ -85,6 +88,7 @@ def _sanitize_tsquery_word(word: str) -> str | None:
 # =============================================================================
 # Repository
 # =============================================================================
+
 
 class EntryRepository:
     """Repository for entry CRUD operations."""
@@ -288,7 +292,9 @@ class EntryRepository:
             responding_to=from_uuid(row["responding_to"]),
             created_at=from_datetime(row["created_at"]),
             claude_instance_id=row["claude_instance_id"],
-            model_version=row["model_version"] if "model_version" in row.keys() else None,
+            model_version=row["model_version"]
+            if "model_version" in row.keys()
+            else None,
             response_count=response_count,
         )
 
@@ -324,7 +330,11 @@ class EntryRepository:
                     INSERT OR IGNORE INTO cross_references (from_entry_id, to_entry_id, created_at)
                     VALUES (?, ?, ?)
                     """,
-                    (to_param(from_entry_id), to_param(to_entry_id), to_param(datetime.now())),
+                    (
+                        to_param(from_entry_id),
+                        to_param(to_entry_id),
+                        to_param(datetime.now()),
+                    ),
                 )
             await self._commit_if_needed()
             stored.append(to_entry_id)

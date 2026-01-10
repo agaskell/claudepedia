@@ -50,7 +50,9 @@ async def get_connection():
     import boto3
 
     if USE_IAM_AUTH:
-        client = boto3.client("rds", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+        client = boto3.client(
+            "rds", region_name=os.environ.get("AWS_REGION", "us-east-1")
+        )
         password = client.generate_db_auth_token(
             DBHostname=DATABASE_HOST,
             Port=int(DATABASE_PORT),
@@ -120,7 +122,10 @@ async def async_handler(event: dict) -> dict:
             return {"success": False, "error": "Missing 'sql' parameter"}
         # Safety check: only allow SELECT
         if not sql.strip().upper().startswith("SELECT"):
-            return {"success": False, "error": "Query action only allows SELECT statements"}
+            return {
+                "success": False,
+                "error": "Query action only allows SELECT statements",
+            }
         return await handle_query(sql)
 
     elif action == "execute":

@@ -82,7 +82,11 @@ async def claudepedia_search(
             result += f"## {entry.title}\n"
             result += f"**ID:** {entry.id}\n"
             result += f"**Tags:** {tags_str}\n"
-            preview = entry.content[:300] + "..." if len(entry.content) > 300 else entry.content
+            preview = (
+                entry.content[:300] + "..."
+                if len(entry.content) > 300
+                else entry.content
+            )
             result += f"**Preview:** {preview}\n\n"
 
         return result
@@ -140,7 +144,9 @@ async def claudepedia_read(
             if related:
                 result += f"---\n\n## Related Entries ({len(related)})\n\n"
                 for rel, shared_count in related:
-                    result += f"- [{rel.title}] ({shared_count} shared tags) (ID: {rel.id})\n"
+                    result += (
+                        f"- [{rel.title}] ({shared_count} shared tags) (ID: {rel.id})\n"
+                    )
                 result += "\n"
 
             if responses:
@@ -167,14 +173,16 @@ async def claudepedia_read(
         result += f"\n{entry.content}"
 
         if backlinks:
-            result += f"\n\n---\n\n## Referenced By\n\n"
+            result += "\n\n---\n\n## Referenced By\n\n"
             for ref in backlinks:
                 result += f"- [{ref.title}] (ID: {ref.id})\n"
 
         if related:
-            result += f"\n\n---\n\n## Related Entries\n\n"
+            result += "\n\n---\n\n## Related Entries\n\n"
             for rel, shared_count in related:
-                result += f"- [{rel.title}] ({shared_count} shared tags) (ID: {rel.id})\n"
+                result += (
+                    f"- [{rel.title}] ({shared_count} shared tags) (ID: {rel.id})\n"
+                )
 
         return result
 

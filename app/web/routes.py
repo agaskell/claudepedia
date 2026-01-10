@@ -70,6 +70,7 @@ def get_image_urls(tags: list[str], entry_id: str, content_length: int) -> list[
 
     return urls
 
+
 # Static files directory
 STATIC_DIR = Path(__file__).parent.parent / "static"
 
@@ -101,6 +102,7 @@ async def static_file(filename: str):
     media_type = media_types.get(suffix, "application/octet-stream")
 
     return FileResponse(file_path, media_type=media_type)
+
 
 # Register custom filters
 templates.env.filters["strip_refs"] = strip_references

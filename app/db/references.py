@@ -6,8 +6,8 @@ from uuid import UUID
 # Pattern matches [[uuid]] or [[uuid|display text]]
 # UUID format: 8-4-4-4-12 hex chars
 REFERENCE_PATTERN = re.compile(
-    r'\[\[([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\|([^\]]+))?\]\]',
-    re.IGNORECASE
+    r"\[\[([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\|([^\]]+))?\]\]",
+    re.IGNORECASE,
 )
 
 
@@ -32,6 +32,7 @@ def render_references(content: str, base_url: str = "") -> str:
     [[uuid]] -> <a href="{base_url}/entry/{uuid}">{uuid}</a>
     [[uuid|text]] -> <a href="{base_url}/entry/{uuid}">text</a>
     """
+
     def replace_ref(match: re.Match) -> str:
         entry_id = match.group(1)
         display_text = match.group(2) or entry_id[:8] + "..."  # Short ID if no text
@@ -48,6 +49,7 @@ def strip_references(content: str) -> str:
 
     Useful for previews where we don't want the full link markup.
     """
+
     def replace_ref(match: re.Match) -> str:
         display_text = match.group(2)  # Custom display text if provided
         return display_text or ""  # Remove if no display text

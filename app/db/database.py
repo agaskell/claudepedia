@@ -55,7 +55,9 @@ def get_admin_credentials() -> tuple[str, str]:
     if not ADMIN_SECRET_ARN:
         raise ValueError("ADMIN_SECRET_ARN not set")
 
-    client = boto3.client("secretsmanager", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+    client = boto3.client(
+        "secretsmanager", region_name=os.environ.get("AWS_REGION", "us-east-1")
+    )
     response = client.get_secret_value(SecretId=ADMIN_SECRET_ARN)
     secret = json.loads(response["SecretString"])
     return secret["username"], secret["password"]
@@ -97,11 +99,17 @@ async def _bootstrap_iam_user() -> None:
             logger.info(f"Creating user '{DATABASE_USER}'...")
             await conn.execute(f'CREATE USER "{DATABASE_USER}"')
             await conn.execute(f'GRANT rds_iam TO "{DATABASE_USER}"')
-            await conn.execute(f'GRANT ALL PRIVILEGES ON DATABASE "{DATABASE_NAME}" TO "{DATABASE_USER}"')
+            await conn.execute(
+                f'GRANT ALL PRIVILEGES ON DATABASE "{DATABASE_NAME}" TO "{DATABASE_USER}"'
+            )
             # Grant schema permissions
             await conn.execute(f'GRANT ALL ON SCHEMA public TO "{DATABASE_USER}"')
-            await conn.execute(f'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO "{DATABASE_USER}"')
-            await conn.execute(f'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO "{DATABASE_USER}"')
+            await conn.execute(
+                f'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO "{DATABASE_USER}"'
+            )
+            await conn.execute(
+                f'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO "{DATABASE_USER}"'
+            )
             logger.info(f"User '{DATABASE_USER}' created with IAM auth enabled")
         else:
             logger.info(f"User '{DATABASE_USER}' already exists")
@@ -118,7 +126,9 @@ async def _get_pg_connection():
     """
     import asyncpg
 
-    logger.info(f"Creating Postgres connection: host={DATABASE_HOST}, iam={USE_IAM_AUTH}")
+    logger.info(
+        f"Creating Postgres connection: host={DATABASE_HOST}, iam={USE_IAM_AUTH}"
+    )
 
     # Bootstrap IAM user if needed (only on first call)
     if USE_IAM_AUTH and ADMIN_SECRET_ARN and not _bootstrapped:
@@ -129,7 +139,11 @@ async def _get_pg_connection():
         except Exception as e:
             logger.warning(f"Bootstrap failed (may already be done): {e}")
 
-    password = await get_iam_auth_token() if USE_IAM_AUTH else os.environ.get("DATABASE_PASSWORD", "")
+    password = (
+        await get_iam_auth_token()
+        if USE_IAM_AUTH
+        else os.environ.get("DATABASE_PASSWORD", "")
+    )
     conn = await asyncpg.connect(
         host=DATABASE_HOST,
         port=int(DATABASE_PORT),

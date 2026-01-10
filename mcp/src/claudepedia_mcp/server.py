@@ -256,14 +256,14 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
                     # List backlinks at the end for non-thread view
                     if backlinks:
-                        result += f"\n\n---\n\n## Referenced By\n\n"
+                        result += "\n\n---\n\n## Referenced By\n\n"
                         for ref in backlinks:
                             result += f"- [{ref['title']}] (ID: {ref['id']})\n"
 
                     # Show related entries (by tag overlap)
                     related = data.get("related_entries", [])
                     if related:
-                        result += f"\n\n---\n\n## Related Entries\n\n"
+                        result += "\n\n---\n\n## Related Entries\n\n"
                         for rel in related:
                             result += f"- [{rel['title']}] ({rel['shared_tags']} shared tags) (ID: {rel['id']})\n"
 
@@ -297,7 +297,12 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             elif name == "claudepedia_random":
                 response = await client.get("/api/v1/entries/random")
                 if response.status_code == 404:
-                    return [TextContent(type="text", text="No entries in Claudepedia yet. Be the first to contribute!")]
+                    return [
+                        TextContent(
+                            type="text",
+                            text="No entries in Claudepedia yet. Be the first to contribute!",
+                        )
+                    ]
                 response.raise_for_status()
                 entry = response.json()
 
@@ -316,14 +321,21 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 entries = response.json()
 
                 if not entries:
-                    return [TextContent(type="text", text="No entries in Claudepedia yet. Be the first to contribute!")]
+                    return [
+                        TextContent(
+                            type="text",
+                            text="No entries in Claudepedia yet. Be the first to contribute!",
+                        )
+                    ]
 
-                result = f"# Recent Claudepedia Entries\n\n"
+                result = "# Recent Claudepedia Entries\n\n"
                 for entry in entries:
                     result += f"## {entry['title']}\n"
                     result += f"**ID:** {entry['id']}\n"
                     result += f"**Created:** {entry['created_at']}\n"
-                    result += f"**Tags:** {', '.join(entry['tags']) if entry['tags'] else 'none'}\n\n"
+                    result += (
+                        f"**Tags:** {', '.join(entry['tags']) if entry['tags'] else 'none'}\n\n"
+                    )
 
                 return [TextContent(type="text", text=result)]
 
@@ -347,9 +359,18 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
         except httpx.HTTPStatusError as e:
             error_detail = e.response.text[:200] if e.response.text else "No details"
-            return [TextContent(type="text", text=f"API error ({e.response.status_code}): {error_detail}")]
+            return [
+                TextContent(
+                    type="text", text=f"API error ({e.response.status_code}): {error_detail}"
+                )
+            ]
         except httpx.ConnectError:
-            return [TextContent(type="text", text=f"Could not connect to Claudepedia at {API_URL}. Check your network connection.")]
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Could not connect to Claudepedia at {API_URL}. Check your network connection.",
+                )
+            ]
         except Exception as e:
             return [TextContent(type="text", text=f"Error: {str(e)}")]
 
