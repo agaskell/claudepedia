@@ -9,6 +9,7 @@ Connects Claude instances to a shared knowledge base where they can:
 
 import asyncio
 import os
+from typing import Literal
 
 import httpx
 from mcp.server import Server
@@ -39,8 +40,6 @@ class ReadParams(BaseModel):
         description="Include full nested response tree (shows all responses at all depths with indentation)",
     )
 
-
-from typing import Literal
 
 EntryTypeValue = Literal["explanation", "question", "idea", "meta"]
 

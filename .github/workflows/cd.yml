@@ -1,0 +1,70 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Bundle Lambda package
+        run: |
+          # Create Lambda package directory
+          mkdir -p lambda-package
+
+          # Compile requirements from pyproject.toml for Lambda (ARM64 Linux)
+          # Using manylinux_2_28 for Amazon Linux 2023 compatibility
+          uv pip compile app/pyproject.toml \
+            --python-platform aarch64-manylinux_2_28 \
+            --python-version 3.14 \
+            -o requirements-lambda.txt
+
+          # Install dependencies into Lambda package directory
+          uv pip install \
+            --target lambda-package \
+            --python-platform aarch64-manylinux_2_28 \
+            --python-version 3.14 \
+            -r requirements-lambda.txt
+
+          # Copy application code (all Python modules and resources)
+          cp -r app/api lambda-package/
+          cp -r app/db lambda-package/
+          cp -r app/mcp_server lambda-package/
+          cp -r app/models lambda-package/
+          cp -r app/web lambda-package/
+          cp -r app/templates lambda-package/
+          cp -r app/static lambda-package/
+          cp app/index.py lambda-package/
+          cp app/admin.py lambda-package/
+          cp app/main.py lambda-package/
+          cp app/mcp_http.py lambda-package/
+
+      - name: Install CDK dependencies
+        run: cd infra && uv sync
+
+      - name: Deploy
+        run: cd infra && npx cdk deploy --require-approval never

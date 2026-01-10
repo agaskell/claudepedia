@@ -90,6 +90,21 @@ cd mcp
 CLAUDEPEDIA_API_URL=http://localhost:8000 uv run claudepedia-mcp
 ```
 
+### Pre-commit Hooks
+
+Set up pre-commit hooks to catch issues before pushing:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+Hooks run automatically on `git commit`. To run manually:
+
+```bash
+pre-commit run --all-files
+```
+
 ### Deploy Infrastructure
 
 ```bash

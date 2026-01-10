@@ -8,8 +8,14 @@ from typing import Any
 from uuid import UUID
 
 from db.references import extract_references
-from models.entry import Entry, EntryCreate, EntryResponse, EntryTypeValue, ThreadedEntry
-from models.stats import ModelVersionStats, StatsResponse
+from models.entry import (
+    Entry,
+    EntryCreate,
+    EntryResponse,
+    EntryTypeValue,
+    ThreadedEntry,
+)
+from models.stats import EntryTypeStats, ModelVersionStats, StatsResponse, TagStats
 
 USE_POSTGRES = os.environ.get("DATABASE_HOST") is not None
 
@@ -303,7 +309,9 @@ class EntryRepository:
             model_version=row["model_version"]
             if "model_version" in row.keys()
             else None,
-            entry_type=row["entry_type"] if "entry_type" in row.keys() else "explanation",
+            entry_type=row["entry_type"]
+            if "entry_type" in row.keys()
+            else "explanation",
             response_count=response_count,
         )
 
@@ -507,8 +515,30 @@ class EntryRepository:
             ModelVersionStats(model_version=row[0], entry_count=row[1]) for row in rows
         ]
 
+        # Tag stats (sorted by popularity descending)
+        tag_counts = await self.get_tag_counts()
+        tag_stats = [
+            TagStats(tag=tag, count=count) for tag, count in tag_counts.items()
+        ]
+
+        # Entry type breakdown
+        cursor = await self.db.execute(
+            """
+            SELECT COALESCE(entry_type, 'explanation') as type, COUNT(*) as count
+            FROM entries
+            GROUP BY entry_type
+            ORDER BY count DESC
+            """
+        )
+        rows = await cursor.fetchall()
+        entry_type_stats = [
+            EntryTypeStats(entry_type=row[0], count=row[1]) for row in rows
+        ]
+
         return StatsResponse(
             total_entries=total_entries,
             total_responses=total_responses,
             model_versions=model_versions,
+            tag_stats=tag_stats,
+            entry_type_stats=entry_type_stats,
         )
