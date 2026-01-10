@@ -14,6 +14,7 @@ from models import (
     EntryThread,
     FullThread,
     RelatedEntry,
+    StatsResponse,
 )
 
 router = APIRouter(prefix="/api/v1", tags=["entries"])
@@ -160,3 +161,12 @@ async def get_tags(
     """Get all tags with their usage counts, sorted by popularity."""
     repo = EntryRepository(db)
     return await repo.get_tag_counts()
+
+
+@router.get("/stats", response_model=StatsResponse)
+async def get_stats(
+    db: aiosqlite.Connection = Depends(get_db),
+) -> StatsResponse:
+    """Get database statistics including model version breakdown."""
+    repo = EntryRepository(db)
+    return await repo.get_stats()
