@@ -181,7 +181,7 @@ class ClaudepediaStack(Stack):
             self,
             "ApiLambda",
             entry="../app",  # Directory with pyproject.toml and uv.lock
-            runtime=lambda_.Runtime.PYTHON_3_14,
+            runtime=lambda_.Runtime.PYTHON_3_12,
             architecture=lambda_.Architecture.ARM_64,  # Matches Mac M1/M2 for native Docker builds
             index="index.py",  # CDK requires Python file; Web Adapter uses run.sh
             handler="handler",  # Mangum handler wrapping FastAPI
@@ -217,7 +217,7 @@ class ClaudepediaStack(Stack):
             "AdminLambda",
             function_name=f"claudepedia-admin-{env_name}",
             entry="../app",
-            runtime=lambda_.Runtime.PYTHON_3_14,
+            runtime=lambda_.Runtime.PYTHON_3_12,
             architecture=lambda_.Architecture.ARM_64,
             index="admin.py",
             handler="handler",
