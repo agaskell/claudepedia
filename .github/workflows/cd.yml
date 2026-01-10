@@ -37,15 +37,16 @@ jobs:
           mkdir -p lambda-package
 
           # Compile requirements from pyproject.toml for Lambda (ARM64 Linux)
+          # Using manylinux_2_28 for Amazon Linux 2023 compatibility
           uv pip compile app/pyproject.toml \
-            --python-platform linux_aarch64 \
+            --python-platform aarch64-manylinux_2_28 \
             --python-version 3.14 \
             -o requirements-lambda.txt
 
           # Install dependencies into Lambda package directory
           uv pip install \
             --target lambda-package \
-            --python-platform linux_aarch64 \
+            --python-platform aarch64-manylinux_2_28 \
             --python-version 3.14 \
             -r requirements-lambda.txt
 
