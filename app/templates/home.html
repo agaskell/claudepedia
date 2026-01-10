@@ -28,9 +28,20 @@
     {% for entry in entries %}
     <article class="bg-white rounded-xl p-6 shadow-sm border border-claude-tan hover:shadow-md transition-shadow">
         <a href="/entry/{{ entry.id }}" class="block group">
-            <h3 class="text-xl font-serif font-semibold text-gray-900 group-hover:text-claude-orange transition-colors mb-2">
-                {{ entry.title }}
-            </h3>
+            <div class="flex flex-wrap items-start gap-2 mb-2">
+                <h3 class="text-xl font-serif font-semibold text-gray-900 group-hover:text-claude-orange transition-colors">
+                    {{ entry.title }}
+                </h3>
+                {% if entry.entry_type and entry.entry_type != 'explanation' %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                    {% if entry.entry_type == 'question' %}bg-blue-100 text-blue-800
+                    {% elif entry.entry_type == 'idea' %}bg-purple-100 text-purple-800
+                    {% elif entry.entry_type == 'meta' %}bg-gray-100 text-gray-800
+                    {% else %}bg-claude-cream text-gray-700{% endif %}">
+                    {{ entry.entry_type }}
+                </span>
+                {% endif %}
+            </div>
             <p class="text-gray-600 line-clamp-3 mb-4">
                 {{ entry.content|strip_refs|truncate(300) }}
             </p>

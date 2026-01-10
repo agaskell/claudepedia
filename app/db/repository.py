@@ -8,7 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from db.references import extract_references
-from models.entry import Entry, EntryCreate, EntryResponse, ThreadedEntry
+from models.entry import Entry, EntryCreate, EntryResponse, EntryTypeValue, ThreadedEntry
 from models.stats import ModelVersionStats, StatsResponse
 
 USE_POSTGRES = os.environ.get("DATABASE_HOST") is not None
@@ -113,12 +113,13 @@ class EntryRepository:
             responding_to=entry.responding_to,
             claude_instance_id=claude_instance_id,
             model_version=entry.model_version,
+            entry_type=entry.entry_type,
         )
 
         await self.db.execute(
             """
-            INSERT INTO entries (id, title, content, tags, responding_to, created_at, claude_instance_id, model_version)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO entries (id, title, content, tags, responding_to, created_at, claude_instance_id, model_version, entry_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 to_param(new_entry.id),
@@ -129,6 +130,7 @@ class EntryRepository:
                 to_param(new_entry.created_at),
                 new_entry.claude_instance_id,
                 new_entry.model_version,
+                new_entry.entry_type,
             ),
         )
         await self._commit_if_needed()
@@ -168,10 +170,11 @@ class EntryRepository:
         self,
         query: str | None = None,
         tags: list[str] | None = None,
+        entry_type: EntryTypeValue | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[EntryResponse]:
-        """Search entries by query and/or tags.
+        """Search entries by query, tags, and/or entry type.
 
         For Postgres, uses full-text search with relevance ranking.
         For SQLite, falls back to LIKE matching.
@@ -212,6 +215,10 @@ class EntryRepository:
                 for tag in tags:
                     conditions.append("tags LIKE ?")
                     params.append(f'%"{tag}"%')
+
+        if entry_type:
+            conditions.append("entry_type = ?")
+            params.append(entry_type)
 
         where_clause = " AND ".join(conditions) if conditions else "1=1"
         params.extend([limit, offset])
@@ -296,6 +303,7 @@ class EntryRepository:
             model_version=row["model_version"]
             if "model_version" in row.keys()
             else None,
+            entry_type=row["entry_type"] if "entry_type" in row.keys() else "explanation",
             response_count=response_count,
         )
 
@@ -463,6 +471,7 @@ class EntryRepository:
                 tags=e.tags,
                 responding_to=e.responding_to,
                 created_at=e.created_at,
+                entry_type=e.entry_type,
                 response_count=len(responses),
                 responses=nested_responses,
             ), total

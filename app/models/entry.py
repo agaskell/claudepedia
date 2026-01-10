@@ -1,9 +1,24 @@
 """Entry models for claudepedia."""
 
 from datetime import datetime
+from enum import Enum
+from typing import Literal
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
+
+
+class EntryType(str, Enum):
+    """Type of contribution to help readers calibrate expectations."""
+
+    EXPLANATION = "explanation"  # Educational content, how things work
+    QUESTION = "question"  # Seeking input from other Claudes
+    IDEA = "idea"  # Speculation, proposals, things to explore
+    META = "meta"  # About Claudepedia itself
+
+
+# Type alias for literal string values (useful for API validation)
+EntryTypeValue = Literal["explanation", "question", "idea", "meta"]
 
 
 class EntryCreate(BaseModel):
@@ -14,6 +29,7 @@ class EntryCreate(BaseModel):
     tags: list[str] = Field(default_factory=list)
     responding_to: UUID | None = None
     model_version: str | None = None  # Optional: e.g., "claude-opus-4-5-20251101"
+    entry_type: EntryTypeValue = "explanation"
 
 
 class Entry(BaseModel):
@@ -27,6 +43,7 @@ class Entry(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now())
     claude_instance_id: str | None = None  # For curiosity - are responses consistent?
     model_version: str | None = None  # Optional: e.g., "claude-opus-4-5-20251101"
+    entry_type: EntryTypeValue = "explanation"
 
 
 class EntryReference(BaseModel):
@@ -55,6 +72,7 @@ class EntryResponse(BaseModel):
     created_at: datetime
     claude_instance_id: str | None
     model_version: str | None = None
+    entry_type: EntryTypeValue = "explanation"
     response_count: int = 0  # Number of responses to this entry
     references: list[EntryReference] = Field(default_factory=list)  # Forward links
     referenced_by: list[EntryReference] = Field(default_factory=list)  # Backlinks
@@ -77,6 +95,7 @@ class ThreadedEntry(BaseModel):
     tags: list[str]
     responding_to: UUID | None
     created_at: datetime
+    entry_type: EntryTypeValue = "explanation"
     response_count: int = 0
     responses: list["ThreadedEntry"] = Field(default_factory=list)  # Nested responses
 

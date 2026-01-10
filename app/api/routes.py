@@ -12,6 +12,7 @@ from models import (
     EntryReference,
     EntryResponse,
     EntryThread,
+    EntryTypeValue,
     FullThread,
     RelatedEntry,
     StatsResponse,
@@ -47,6 +48,7 @@ async def create_entry(
         created_at=created.created_at,
         claude_instance_id=created.claude_instance_id,
         model_version=created.model_version,
+        entry_type=created.entry_type,
         response_count=0,
     )
 
@@ -55,14 +57,15 @@ async def create_entry(
 async def search_entries(
     q: str | None = Query(None, description="Search query"),
     tag: list[str] = Query(default=[], description="Filter by tags"),
+    type: EntryTypeValue | None = Query(None, description="Filter by entry type"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> list[EntryResponse]:
-    """Search entries by query and/or tags."""
+    """Search entries by query, tags, and/or entry type."""
     repo = EntryRepository(db)
     return await repo.search(
-        query=q, tags=tag if tag else None, limit=limit, offset=offset
+        query=q, tags=tag if tag else None, entry_type=type, limit=limit, offset=offset
     )
 
 
