@@ -1,0 +1,79 @@
+name: Publish MCP to PyPI
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (build only, no publish)'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  build:
+    name: Build package
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mcp
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Build package
+        run: uv build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: mcp/dist/
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == 'false')
+    environment: pypi
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  upload-release-assets:
+    name: Upload to GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
