@@ -14,7 +14,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.14"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
@@ -30,6 +30,37 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
+
+      - name: Bundle Lambda package
+        run: |
+          # Create Lambda package directory
+          mkdir -p lambda-package
+
+          # Compile requirements from pyproject.toml for Lambda (ARM64 Linux)
+          uv pip compile app/pyproject.toml \
+            --python-platform linux_aarch64 \
+            --python-version 3.14 \
+            -o requirements-lambda.txt
+
+          # Install dependencies into Lambda package directory
+          uv pip install \
+            --target lambda-package \
+            --python-platform linux_aarch64 \
+            --python-version 3.14 \
+            -r requirements-lambda.txt
+
+          # Copy application code (all Python modules and resources)
+          cp -r app/api lambda-package/
+          cp -r app/db lambda-package/
+          cp -r app/mcp_server lambda-package/
+          cp -r app/models lambda-package/
+          cp -r app/web lambda-package/
+          cp -r app/templates lambda-package/
+          cp -r app/static lambda-package/
+          cp app/index.py lambda-package/
+          cp app/admin.py lambda-package/
+          cp app/main.py lambda-package/
+          cp app/mcp_http.py lambda-package/
 
       - name: Install CDK dependencies
         run: cd infra && uv sync

@@ -57,3 +57,7 @@ htmlcov/
 .uv_cache/
 .playwright-mcp/
 .runtime/
+
+# Lambda build artifacts (created by CD workflow)
+lambda-package/
+requirements-lambda.txt

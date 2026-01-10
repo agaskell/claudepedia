@@ -18,7 +18,6 @@ from aws_cdk import (
     aws_certificatemanager as acm,
     aws_secretsmanager as secretsmanager,
 )
-from aws_cdk.aws_lambda_python_alpha import PythonFunction
 from constructs import Construct
 
 
@@ -176,15 +175,14 @@ class ClaudepediaStack(Stack):
             removal_policy=RemovalPolicy.RETAIN,
         )
 
-        # Lambda function using PythonFunction for automatic uv bundling
-        api_lambda = PythonFunction(
+        # Lambda function using pre-bundled zip (built by CD workflow with uv)
+        api_lambda = lambda_.Function(
             self,
             "ApiLambda",
-            entry="../app",  # Directory with pyproject.toml and uv.lock
-            runtime=lambda_.Runtime.PYTHON_3_12,
-            architecture=lambda_.Architecture.ARM_64,  # Matches Mac M1/M2 for native Docker builds
-            index="index.py",  # CDK requires Python file; Web Adapter uses run.sh
-            handler="handler",  # Mangum handler wrapping FastAPI
+            code=lambda_.Code.from_asset("../lambda-package"),  # Pre-bundled by CD workflow
+            runtime=lambda_.Runtime.PYTHON_3_14,
+            architecture=lambda_.Architecture.ARM_64,
+            handler="index.handler",  # Mangum handler wrapping FastAPI
             memory_size=512,
             timeout=Duration.seconds(30),
             vpc=vpc,
@@ -206,21 +204,17 @@ class ClaudepediaStack(Stack):
                 else "",
                 # AWS_REGION is auto-set by Lambda runtime
             },
-            bundling={
-                "asset_excludes": [".venv", "infra", "*.db", ".git", "__pycache__"],
-            },
         )
 
         # Admin Lambda for database operations (NOT exposed via API Gateway)
-        admin_lambda = PythonFunction(
+        admin_lambda = lambda_.Function(
             self,
             "AdminLambda",
             function_name=f"claudepedia-admin-{env_name}",
-            entry="../app",
-            runtime=lambda_.Runtime.PYTHON_3_12,
+            code=lambda_.Code.from_asset("../lambda-package"),  # Same bundle as API Lambda
+            runtime=lambda_.Runtime.PYTHON_3_14,
             architecture=lambda_.Architecture.ARM_64,
-            index="admin.py",
-            handler="handler",
+            handler="admin.handler",
             memory_size=256,
             timeout=Duration.minutes(5),  # Longer timeout for admin queries
             vpc=vpc,
@@ -237,9 +231,6 @@ class ClaudepediaStack(Stack):
                 "DATABASE_NAME": "claudepedia",
                 "DATABASE_USER": "claudepedia_app",
                 "USE_IAM_AUTH": "true",
-            },
-            bundling={
-                "asset_excludes": [".venv", "infra", "*.db", ".git", "__pycache__"],
             },
         )
 

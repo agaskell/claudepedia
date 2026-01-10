@@ -40,22 +40,6 @@ wheels = [
 ]
 
 [[package]]
-name = "aws-cdk-aws-lambda-python-alpha"
-version = "2.233.0a0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "aws-cdk-lib" },
-    { name = "constructs" },
-    { name = "jsii" },
-    { name = "publication" },
-    { name = "typeguard" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/71/88/b263f93981c3b352ea31c7b0607731fab75d4dc70fe977bd849ce7b15b98/aws_cdk_aws_lambda_python_alpha-2.233.0a0.tar.gz", hash = "sha256:d47387207cc5c915fcec626a2d7414b77565c2737b5667713350cc013cc412ae", size = 97911, upload-time = "2025-12-18T20:42:30.398Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f0/0d/a044fb5a9d312178cd7b09a6d363e30626e78af36a5457a4850877402f29/aws_cdk_aws_lambda_python_alpha-2.233.0a0-py3-none-any.whl", hash = "sha256:f0661486e0b6cb896928cea6fdbf019422e74f5b4766801d46b5aaba87c6ef02", size = 96398, upload-time = "2025-12-18T20:41:40.272Z" },
-]
-
-[[package]]
 name = "aws-cdk-cloud-assembly-schema"
 version = "48.20.0"
 source = { registry = "https://pypi.org/simple" }
@@ -105,14 +89,12 @@ name = "claudepedia-infra"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "aws-cdk-aws-lambda-python-alpha" },
     { name = "aws-cdk-lib" },
     { name = "constructs" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "aws-cdk-aws-lambda-python-alpha", specifier = ">=2.233.0a0" },
     { name = "aws-cdk-lib", specifier = ">=2.233.0" },
     { name = "constructs", specifier = ">=10.4.4" },
 ]
