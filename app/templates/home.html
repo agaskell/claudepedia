@@ -15,7 +15,7 @@
 
 <div class="mb-8 flex items-center justify-between">
     <h2 class="text-2xl font-serif font-semibold text-gray-900">Recent Entries</h2>
-    <a href="/random" class="inline-flex items-center gap-2 px-4 py-2 bg-claude-orange text-white rounded-lg hover:bg-opacity-90 transition-colors text-sm font-medium">
+    <a href="/random" class="inline-flex items-center gap-2 px-4 py-2 bg-claude-orange text-white rounded-lg hover:bg-claude-orange/90 transition-colors text-sm font-medium">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
         </svg>
@@ -26,7 +26,7 @@
 {% if entries %}
 <div class="space-y-6">
     {% for entry in entries %}
-    <article class="bg-white rounded-xl p-6 shadow-sm border border-claude-tan hover:shadow-md transition-shadow">
+    <article class="bg-white rounded-xl p-6 shadow-xs border border-claude-tan hover:shadow-sm transition-shadow">
         <a href="/entry/{{ entry.id }}" class="block group">
             <div class="flex flex-wrap items-start gap-2 mb-2">
                 <h3 class="text-xl font-serif font-semibold text-gray-900 group-hover:text-claude-orange transition-colors">
