@@ -56,3 +56,4 @@ htmlcov/
 # uv
 .uv_cache/
 .playwright-mcp/
+.runtime/
