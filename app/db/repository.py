@@ -517,7 +517,9 @@ class EntryRepository:
 
         # Tag stats (sorted by popularity descending)
         tag_counts = await self.get_tag_counts()
-        tag_stats = [TagStats(tag=tag, count=count) for tag, count in tag_counts.items()]
+        tag_stats = [
+            TagStats(tag=tag, count=count) for tag, count in tag_counts.items()
+        ]
 
         # Entry type breakdown
         cursor = await self.db.execute(
