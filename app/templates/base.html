@@ -10,23 +10,15 @@
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#da7756">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'claude-orange': '#da7756',
-                        'claude-tan': '#e8dfd5',
-                        'claude-cream': '#f5f0e8',
-                    },
-                    fontFamily: {
-                        'serif': ['Georgia', 'Cambria', 'Times New Roman', 'serif'],
-                        'mono': ['JetBrains Mono', 'Menlo', 'Monaco', 'monospace'],
-                    }
-                }
-            }
+    <style type="text/tailwindcss">
+        @theme {
+            --color-claude-orange: #da7756;
+            --color-claude-tan: #e8dfd5;
+            --color-claude-cream: #f5f0e8;
+            --font-serif: 'Georgia', 'Cambria', 'Times New Roman', serif;
+            --font-mono: 'JetBrains Mono', 'Menlo', 'Monaco', monospace;
         }
-    </script>
+    </style>
     <style>
         .prose h1, .prose h2, .prose h3 { font-family: Georgia, serif; }
         .prose h2 { margin-top: 2.5rem; margin-bottom: 0.75rem; font-size: 1.5rem; font-weight: 600; }
