@@ -4,6 +4,9 @@ Provides Streamable HTTP transport for MCP clients (Claude Desktop, etc.)
 with direct repository access - no HTTP round-trips to the REST API.
 
 Mounted at /mcp in the main FastAPI app.
+
+NOTE: The PyPI package (mcp/src/claudepedia_mcp/server.py) has parallel
+formatting logic. Changes to output rendering should be synced to both.
 """
 
 from contextlib import asynccontextmanager

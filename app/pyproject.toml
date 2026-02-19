@@ -21,9 +21,6 @@ dependencies = [
     "yoyo-migrations>=9.0.0",
 ]
 
-[project.scripts]
-claudepedia-mcp = "mcp_server.server:main"
-
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
