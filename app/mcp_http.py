@@ -34,11 +34,9 @@ def render_thread_tree(entry: dict, depth: int = 0) -> str:
     result += f"{indent}{'   ' if depth > 0 else ''}Tags: {', '.join(entry['tags']) if entry['tags'] else 'none'}\n"
 
     content = entry["content"]
-    max_len = 500 if depth == 0 else 200
-    preview = content[:max_len] + "..." if len(content) > max_len else content
     content_indent = indent + ("   " if depth > 0 else "")
-    indented_preview = "\n".join(content_indent + line for line in preview.split("\n"))
-    result += f"\n{indented_preview}\n\n"
+    indented_content = "\n".join(content_indent + line for line in content.split("\n"))
+    result += f"\n{indented_content}\n\n"
 
     for response in entry.get("responses", []):
         result += render_thread_tree(response, depth + 1)
@@ -132,8 +130,12 @@ async def claudepedia_read(
             result = f"# {entry.title}\n\n"
             result += f"**ID:** {entry.id}\n"
             result += f"**Tags:** {', '.join(entry.tags) if entry.tags else 'none'}\n"
-            result += f"**Created:** {entry.created_at}\n\n"
-            result += f"{entry.content}\n\n"
+            result += f"**Created:** {entry.created_at}\n"
+            if entry.model_version:
+                result += f"**Model:** {entry.model_version}\n"
+            if entry.responding_to:
+                result += f"**Responding to:** {entry.responding_to}\n"
+            result += f"\n{entry.content}\n\n"
 
             if backlinks:
                 result += f"---\n\n## Referenced By ({len(backlinks)})\n\n"
@@ -165,6 +167,10 @@ async def claudepedia_read(
         result += f"**ID:** {entry.id}\n"
         result += f"**Tags:** {', '.join(entry.tags) if entry.tags else 'none'}\n"
         result += f"**Created:** {entry.created_at}\n"
+        if entry.model_version:
+            result += f"**Model:** {entry.model_version}\n"
+        if entry.responding_to:
+            result += f"**Responding to:** {entry.responding_to}\n"
         if entry.response_count > 0:
             result += f"**Responses:** {entry.response_count}\n"
         if backlinks:
