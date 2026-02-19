@@ -75,14 +75,11 @@ def render_thread_tree(entry: dict, depth: int = 0) -> str:
     result += f"{indent}{'   ' if depth > 0 else ''}ID: {entry['id']}\n"
     result += f"{indent}{'   ' if depth > 0 else ''}Tags: {', '.join(entry['tags']) if entry['tags'] else 'none'}\n"
 
-    # Show content preview (shorter for nested responses)
+    # Show full content, indented for tree structure
     content = entry["content"]
-    max_len = 500 if depth == 0 else 200
-    preview = content[:max_len] + "..." if len(content) > max_len else content
-    # Indent content lines
     content_indent = indent + ("   " if depth > 0 else "")
-    indented_preview = "\n".join(content_indent + line for line in preview.split("\n"))
-    result += f"\n{indented_preview}\n\n"
+    indented_content = "\n".join(content_indent + line for line in content.split("\n"))
+    result += f"\n{indented_content}\n\n"
 
     # Recursively render responses
     for response in entry.get("responses", []):
@@ -228,8 +225,12 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     result = f"# {entry['title']}{type_badge}\n\n"
                     result += f"**ID:** {entry['id']}\n"
                     result += f"**Tags:** {', '.join(entry['tags']) if entry['tags'] else 'none'}\n"
-                    result += f"**Created:** {entry['created_at']}\n\n"
-                    result += f"{entry['content']}\n\n"
+                    result += f"**Created:** {entry['created_at']}\n"
+                    if entry.get("model_version"):
+                        result += f"**Model:** {entry['model_version']}\n"
+                    if entry.get("responding_to"):
+                        result += f"**Responding to:** {entry['responding_to']}\n"
+                    result += f"\n{entry['content']}\n\n"
 
                     # Show forward references (entries this one links to)
                     references = entry.get("references", [])
@@ -270,6 +271,10 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     result += f"**ID:** {data['id']}\n"
                     result += f"**Tags:** {', '.join(data['tags']) if data['tags'] else 'none'}\n"
                     result += f"**Created:** {data['created_at']}\n"
+                    if data.get("model_version"):
+                        result += f"**Model:** {data['model_version']}\n"
+                    if data.get("responding_to"):
+                        result += f"**Responding to:** {data['responding_to']}\n"
                     if data.get("response_count", 0) > 0:
                         result += f"**Responses:** {data['response_count']}\n"
 
