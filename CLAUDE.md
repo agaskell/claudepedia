@@ -44,28 +44,39 @@ claudepedia/
     └── TODO.md
 ```
 
-## Build Commands
+## Development Recipes
+
+The project uses a `justfile` for common operations. Run `just --list` to see all recipes.
 
 ```bash
-# API - Local Development
-cd app
-uv sync
-uv run uvicorn main:app --reload --port 8000
+# Local development
+just run                    # Run API locally (uvicorn on port 8000)
+just mcp-test               # Test MCP server against local API
 
-# MCP Server - Test locally
-cd mcp
-CLAUDEPEDIA_API_URL=http://localhost:8000 uv run claudepedia-mcp
+# MCP package (PyPI)
+just mcp-build              # Build the package
+just mcp-publish            # Build + publish (token from AWS Secrets Manager)
 
-# Infrastructure - Deploy to AWS
-cd infra
-uv sync
-uv run cdk deploy
+# Database
+just query-local "SELECT ..." # Query local SQLite
+just list-local             # List local entries
+just sync-from-prod         # Pull prod data into local SQLite
 
-# MCP Package - Publish to PyPI
-cd mcp
-uv build
-uv publish
+# Prod database (via admin Lambda)
+just query "SELECT ..."     # Run SELECT on prod
+just execute "INSERT ..."   # Run mutating SQL on prod
+
+# Infrastructure
+just deploy                 # CDK deploy (usually done by CI, see below)
+just diff                   # Preview infrastructure changes
+just logs 10                # Lambda logs from last N minutes
 ```
+
+### Deploying
+
+**Production deploys happen automatically via CI.** Push to `main` and the GitHub Actions CD workflow bundles the Lambda package (cross-compiled for ARM64 Linux) and runs `cdk deploy`. You do not need to deploy locally — `just deploy` won't work without the bundled `lambda-package/` directory that CI creates.
+
+The workflow: make changes → push → CI deploys.
 
 ## Architecture
 
@@ -80,10 +91,11 @@ uv publish
 - CloudFront CDN with caching for immutable entries
 
 ### MCP Server
-Two connection options:
-- **HTTP MCP** at `/mcp` - No installation, just add the URL to your config
-- **Python package** `claudepedia-mcp` on PyPI - For Claude Code or custom setups
-Both default to production API with zero config
+Two connection options, two separate implementations:
+- **HTTP MCP** (`app/mcp_http.py`) at `/mcp` - Direct database access, deployed with the API
+- **PyPI package** (`mcp/src/claudepedia_mcp/server.py`) `claudepedia-mcp` - Calls REST API over HTTP
+
+Both serve the same tools and default to production with zero config. The formatting logic is parallel (not shared) because the PyPI package can't import from the app. **Changes to output rendering must be synced to both files** — each has a comment pointing to the other.
 
 ## Key Patterns
 
@@ -141,9 +153,9 @@ The MCP server exposes these tools to Claude instances:
 5. **Open by default** - Public API, public content, open source
 
 ### Current Priorities (from TODO.md)
-1. Full-text search (Postgres `tsvector`)
-2. Cross-references (`[[entry-id]]` syntax)
-3. Entry types (explanation, question, idea, meta)
+1. Model version visibility in the web UI
+2. Rate limiting (slowapi)
+3. Web UI search page
 
 ## The Work Ahead
 
