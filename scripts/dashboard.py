@@ -58,7 +58,7 @@ def fetch_cloudfront_daily(days: int) -> pd.DataFrame:
         Statistics=["Sum"],
     )
     rows = [
-        {"date": dp["Timestamp"], "requests": int(dp["Sum"])}
+        {"date": dp["Timestamp"].replace(tzinfo=None), "requests": int(dp["Sum"])}
         for dp in response["Datapoints"]
     ]
     df = pd.DataFrame(rows)
@@ -97,7 +97,7 @@ def fetch_cloudfront_summary(days: int) -> dict:
     start = end - timedelta(days=days)
     summary = {}
 
-    # Bytes
+    # Bytes — use daily granularity and sum ourselves
     r = cw.get_metric_statistics(
         Namespace="AWS/CloudFront",
         MetricName="BytesDownloaded",
@@ -107,12 +107,13 @@ def fetch_cloudfront_summary(days: int) -> dict:
         ],
         StartTime=start,
         EndTime=end,
-        Period=86400 * days,
+        Period=86400,
         Statistics=["Sum"],
     )
-    summary["bytes_mb"] = r["Datapoints"][0]["Sum"] / (1024 * 1024) if r["Datapoints"] else 0
+    total_bytes = sum(dp["Sum"] for dp in r["Datapoints"])
+    summary["bytes_mb"] = total_bytes / (1024 * 1024)
 
-    # Error rates
+    # Error rates — daily granularity, weighted average
     for metric in ["4xxErrorRate", "5xxErrorRate"]:
         r = cw.get_metric_statistics(
             Namespace="AWS/CloudFront",
@@ -123,15 +124,18 @@ def fetch_cloudfront_summary(days: int) -> dict:
             ],
             StartTime=start,
             EndTime=end,
-            Period=86400 * days,
+            Period=86400,
             Statistics=["Average"],
         )
-        summary[metric] = r["Datapoints"][0]["Average"] if r["Datapoints"] else 0
+        if r["Datapoints"]:
+            summary[metric] = sum(dp["Average"] for dp in r["Datapoints"]) / len(r["Datapoints"])
+        else:
+            summary[metric] = 0
 
     return summary
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=600)
 def fetch_lambda_stats(days: int) -> dict:
     logs = boto3.client("logs")
     end_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
@@ -410,10 +414,46 @@ else:
         "data will appear here once logs start accumulating (typically within a few hours after deploy)."
     )
 
-# --- Lambda performance ---
-st.header("Lambda Performance")
+# --- Database / contributors (fast — render before slow Lambda section) ---
+st.header("Contributors")
 
-with st.spinner("Loading Lambda logs..."):
+with st.spinner("Loading database stats..."):
+    db = fetch_database_stats()
+
+col1, col2, col3 = st.columns(3)
+col1.metric("Total Entries", db["total"])
+col2.metric("Original Entries", db["total"] - db["responses"])
+col3.metric("Responses", db["responses"])
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("Entries by Model")
+    if not db["models"].empty:
+        st.bar_chart(db["models"].set_index("model")["count"])
+
+with col2:
+    st.subheader("Entries per Week")
+    if not db["weekly"].empty:
+        st.bar_chart(db["weekly"].set_index("week")["count"])
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("Top Tags")
+    if not db["tags"].empty:
+        st.bar_chart(db["tags"].set_index("tag")["count"])
+
+with col2:
+    st.subheader("Most Discussed")
+    if not db["discussions"].empty:
+        st.dataframe(db["discussions"], use_container_width=True, hide_index=True)
+
+# --- Lambda performance (slow — last so it doesn't block the page) ---
+st.header("Lambda Performance")
+st.caption("This section loads CloudWatch logs and may take a minute on first load.")
+
+with st.spinner("Loading Lambda logs (this can take a minute)..."):
     lam = fetch_lambda_stats(days)
 
 col1, col2, col3, col4 = st.columns(4)
@@ -455,41 +495,6 @@ if lam["durations"]:
         cf_requests = total_requests
         cache_hit_pct = 100 * (1 - lam["invocations"] / max(cf_requests, 1)) if cf_requests else 0
         st.metric("CloudFront Cache Hit Rate", f"{cache_hit_pct:.0f}%")
-
-# --- Database / contributors ---
-st.header("Contributors")
-
-with st.spinner("Loading database stats..."):
-    db = fetch_database_stats()
-
-col1, col2, col3 = st.columns(3)
-col1.metric("Total Entries", db["total"])
-col2.metric("Original Entries", db["total"] - db["responses"])
-col3.metric("Responses", db["responses"])
-
-col1, col2 = st.columns(2)
-
-with col1:
-    st.subheader("Entries by Model")
-    if not db["models"].empty:
-        st.bar_chart(db["models"].set_index("model")["count"])
-
-with col2:
-    st.subheader("Entries per Week")
-    if not db["weekly"].empty:
-        st.bar_chart(db["weekly"].set_index("week")["count"])
-
-col1, col2 = st.columns(2)
-
-with col1:
-    st.subheader("Top Tags")
-    if not db["tags"].empty:
-        st.bar_chart(db["tags"].set_index("tag")["count"])
-
-with col2:
-    st.subheader("Most Discussed")
-    if not db["discussions"].empty:
-        st.dataframe(db["discussions"], use_container_width=True, hide_index=True)
 
 # --- Footer ---
 st.divider()
