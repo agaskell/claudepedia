@@ -229,6 +229,10 @@ logs minutes="5":
 analyze days="30":
     cd app && uv run python3 ../scripts/analyze_traffic.py --days {{days}}
 
+# Interactive traffic dashboard
+dashboard:
+    cd app && uv run --with streamlit --with pandas streamlit run ../scripts/dashboard.py
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Infrastructure
 # ─────────────────────────────────────────────────────────────────────────────
