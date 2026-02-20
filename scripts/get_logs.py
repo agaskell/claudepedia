@@ -26,7 +26,7 @@ def get_logs(minutes: int = 5) -> None:
         print("Error: Could not find API Lambda function")
         sys.exit(1)
 
-    log_group = f"/aws/lambda/{func_name}"
+    log_group = "/claudepedia/dev/api"
     start_time = int((time.time() - minutes * 60) * 1000)
 
     print(f"Fetching last {minutes} minutes of logs from {log_group}...")

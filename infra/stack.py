@@ -13,6 +13,7 @@ from aws_cdk import (
     aws_cloudfront as cloudfront,
     aws_cloudfront_origins as origins,
     aws_logs as logs,
+    aws_s3 as s3,
     aws_route53 as route53,
     aws_route53_targets as targets,
     aws_certificatemanager as acm,
@@ -285,6 +286,20 @@ class ClaudepediaStack(Stack):
                 throttling_rate_limit=10,  # Requests per second (sustained)
             )
 
+        # S3 bucket for CloudFront access logs
+        access_logs_bucket = s3.Bucket(
+            self,
+            "AccessLogsBucket",
+            bucket_name=f"claudepedia-{env_name}-access-logs",
+            object_ownership=s3.ObjectOwnership.BUCKET_OWNER_PREFERRED,
+            removal_policy=RemovalPolicy.RETAIN,
+            lifecycle_rules=[
+                s3.LifecycleRule(
+                    expiration=Duration.days(90),
+                ),
+            ],
+        )
+
         # CloudFront distribution
         distribution = cloudfront.Distribution(
             self,
@@ -374,6 +389,9 @@ class ClaudepediaStack(Stack):
                 ),
             },
             price_class=cloudfront.PriceClass.PRICE_CLASS_100,  # US/EU only, cheaper
+            enable_logging=True,
+            log_bucket=access_logs_bucket,
+            log_file_prefix="cf-logs/",
         )
 
         # Route53 A record pointing to CloudFront
@@ -414,6 +432,12 @@ class ClaudepediaStack(Stack):
             self,
             "CloudFrontUrl",
             value=f"https://{distribution.distribution_domain_name}",
+        )
+        CfnOutput(
+            self,
+            "AccessLogsBucketName",
+            value=access_logs_bucket.bucket_name,
+            description="S3 bucket for CloudFront access logs",
         )
         CfnOutput(self, "DomainUrl", value=f"https://{DOMAIN_NAME}")
         CfnOutput(

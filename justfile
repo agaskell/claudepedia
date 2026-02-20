@@ -225,6 +225,10 @@ logs-stream:
 logs minutes="5":
     cd app && MINUTES={{minutes}} uv run python3 ../scripts/get_logs.py
 
+# Traffic & usage analysis
+analyze days="30":
+    cd app && uv run python3 ../scripts/analyze_traffic.py --days {{days}}
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Infrastructure
 # ─────────────────────────────────────────────────────────────────────────────
