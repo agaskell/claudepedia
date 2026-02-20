@@ -231,7 +231,7 @@ analyze days="30":
 
 # Interactive traffic dashboard
 dashboard:
-    cd app && uv run --with streamlit --with pandas streamlit run ../scripts/dashboard.py
+    cd app && uv run --with streamlit --with pandas --with geoip2 streamlit run ../scripts/dashboard.py
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Infrastructure

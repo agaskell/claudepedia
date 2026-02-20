@@ -12,10 +12,23 @@ import gzip
 import json
 from collections import Counter
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import boto3
 import pandas as pd
 import streamlit as st
+
+try:
+    import geoip2.database
+
+    _GEOIP_AVAILABLE = True
+except ImportError:
+    _GEOIP_AVAILABLE = False
+
+# GeoIP database paths (download from https://dev.maxmind.com/geoip/geolite2-free-geolocation-data)
+_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+_CITY_DB = _DATA_DIR / "GeoLite2-City.mmdb"
+_ASN_DB = _DATA_DIR / "GeoLite2-ASN.mmdb"
 
 DIST_ID = "ED0XL3CEIBJTY"
 LOG_GROUP = "/claudepedia/dev/api"
@@ -302,6 +315,46 @@ def fetch_access_logs(days: int) -> dict | None:
     }
 
 
+@st.cache_data(ttl=300)
+def enrich_ips_with_geo(ip_counts: list[tuple[str, int]]) -> pd.DataFrame:
+    """Look up location and organization for each IP using GeoLite2 databases."""
+    rows = []
+    city_reader = geoip2.database.Reader(str(_CITY_DB)) if _CITY_DB.exists() else None
+    asn_reader = geoip2.database.Reader(str(_ASN_DB)) if _ASN_DB.exists() else None
+
+    try:
+        for ip, count in ip_counts:
+            row: dict = {"ip": ip, "requests": count}
+
+            if city_reader:
+                try:
+                    city = city_reader.city(ip)
+                    row["country"] = city.country.name or "Unknown"
+                    row["country_code"] = city.country.iso_code or ""
+                    row["city"] = city.city.name or ""
+                    row["lat"] = city.location.latitude
+                    row["lon"] = city.location.longitude
+                except Exception:
+                    row.update({"country": "Unknown", "country_code": "", "city": "", "lat": None, "lon": None})
+
+            if asn_reader:
+                try:
+                    asn = asn_reader.asn(ip)
+                    row["org"] = asn.autonomous_system_organization or "Unknown"
+                    row["asn"] = f"AS{asn.autonomous_system_number}" if asn.autonomous_system_number else ""
+                except Exception:
+                    row.update({"org": "Unknown", "asn": ""})
+
+            rows.append(row)
+    finally:
+        if city_reader:
+            city_reader.close()
+        if asn_reader:
+            asn_reader.close()
+
+    return pd.DataFrame(rows)
+
+
 # ---------------------------------------------------------------------------
 # Dashboard layout
 # ---------------------------------------------------------------------------
@@ -394,6 +447,58 @@ if access:
         )
         if not ip_df.empty:
             st.dataframe(ip_df, use_container_width=True, hide_index=True)
+
+    # --- Geography (requires GeoLite2 databases) ---
+    has_geo_dbs = _GEOIP_AVAILABLE and (_CITY_DB.exists() or _ASN_DB.exists())
+    if has_geo_dbs:
+        st.subheader("Geography")
+        geo_df = enrich_ips_with_geo(list(access["ips"].items()))
+
+        if "country" in geo_df.columns:
+            col1, col2 = st.columns(2)
+
+            with col1:
+                country_df = (
+                    geo_df.groupby("country", as_index=False)["requests"]
+                    .sum()
+                    .sort_values("requests", ascending=False)
+                )
+                st.bar_chart(country_df.set_index("country")["requests"])
+
+            with col2:
+                city_df = (
+                    geo_df[geo_df["city"] != ""]
+                    .groupby(["city", "country"], as_index=False)["requests"]
+                    .sum()
+                    .sort_values("requests", ascending=False)
+                    .head(15)
+                )
+                if not city_df.empty:
+                    city_df["location"] = city_df["city"] + ", " + city_df["country"]
+                    st.bar_chart(city_df.set_index("location")["requests"])
+
+            # Map of visitor locations
+            map_df = geo_df.dropna(subset=["lat", "lon"])[["lat", "lon", "requests"]].rename(
+                columns={"lat": "latitude", "lon": "longitude"}
+            )
+            if not map_df.empty:
+                st.map(map_df, size="requests")
+
+        if "org" in geo_df.columns:
+            st.subheader("Organizations / Networks")
+            org_df = (
+                geo_df.groupby(["org", "asn"], as_index=False)["requests"]
+                .sum()
+                .sort_values("requests", ascending=False)
+                .head(20)
+            )
+            st.dataframe(org_df, use_container_width=True, hide_index=True)
+    elif _GEOIP_AVAILABLE:
+        st.info(
+            "To see visitor geography, download GeoLite2 databases from "
+            "[MaxMind](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data) "
+            f"and place them in `{_DATA_DIR}/` as `GeoLite2-City.mmdb` and `GeoLite2-ASN.mmdb`."
+        )
 
     st.subheader("Top User Agents")
     ua_df = pd.DataFrame(

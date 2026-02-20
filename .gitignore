@@ -61,3 +61,6 @@ htmlcov/
 # Lambda build artifacts (created by CD workflow)
 lambda-package/
 requirements-lambda.txt
+
+# GeoIP databases (download from MaxMind)
+data/*.mmdb
