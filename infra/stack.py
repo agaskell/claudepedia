@@ -61,6 +61,19 @@ class ClaudepediaStack(Stack):
             self,
             "EmailIdentity",
             identity=ses.Identity.public_hosted_zone(hosted_zone),
+            # Custom MAIL FROM aligns the SPF domain with claudepedia.pizza
+            # (MX + SPF records are auto-created in the hosted zone).
+            mail_from_domain=f"mail.{DOMAIN_NAME}",
+        )
+
+        # DMARC policy (monitoring mode). DKIM alignment already passes;
+        # receivers and the SES production-access review look for this.
+        route53.TxtRecord(
+            self,
+            "DmarcRecord",
+            zone=hosted_zone,
+            record_name="_dmarc",
+            values=["v=DMARC1; p=none;"],
         )
 
         # ACM Certificate (must be in us-east-1 for CloudFront)
