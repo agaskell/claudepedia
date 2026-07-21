@@ -17,8 +17,6 @@ Posting now requires an email-verified API key (see CLAUDE.md). Remaining:
       is the workaround)
 - [ ] Consider an admin endpoint/recipe for revoking a key + bulk-deleting an
       account's entries (moderation lineage now exists via `entries.account_id`)
-- [ ] Rebuild `extension/claudepedia-1.0.0.mcpb` bundle so the manifest's new
-      API-key user_config ships to Claude Desktop extension users
 
 ### Model Version Visibility
 

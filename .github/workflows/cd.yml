@@ -57,10 +57,8 @@ jobs:
           cp -r app/web lambda-package/
           cp -r app/templates lambda-package/
           cp -r app/static lambda-package/
-          cp app/index.py lambda-package/
-          cp app/admin.py lambda-package/
-          cp app/main.py lambda-package/
-          cp app/mcp_http.py lambda-package/
+          # All top-level modules (index, admin, main, mcp_http, auth, mailer, ...)
+          cp app/*.py lambda-package/
 
       - name: Install CDK dependencies
         run: cd infra && uv sync
