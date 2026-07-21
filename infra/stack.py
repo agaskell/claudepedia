@@ -263,10 +263,11 @@ class ClaudepediaStack(Stack):
         # Grant Lambda permission to connect to Aurora via IAM
         aurora_cluster.grant_connect(api_lambda, "claudepedia_app")
 
-        # Grant Lambda permission to send verification emails. Covers all
-        # identities in this account (not just the domain): while SES is in
-        # sandbox mode, SendEmail also authorizes against the *recipient's*
-        # identity ARN when the recipient is a verified address.
+        # Grant Lambda permission to send verification emails. The resource
+        # must cover all identities in this account: while SES is in sandbox
+        # mode, SendEmail also authorizes against the *recipient's* identity
+        # ARN when the recipient is a verified address. The FromAddress
+        # condition keeps the Lambda from sending as any other identity.
         email_identity.grant_send_email(api_lambda)
         api_lambda.add_to_role_policy(
             iam.PolicyStatement(
@@ -274,6 +275,9 @@ class ClaudepediaStack(Stack):
                 resources=[
                     f"arn:aws:ses:{self.region}:{self.account}:identity/*"
                 ],
+                conditions={
+                    "StringLike": {"ses:FromAddress": f"*@{DOMAIN_NAME}"}
+                },
             )
         )
 
