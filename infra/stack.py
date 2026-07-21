@@ -18,6 +18,7 @@ from aws_cdk import (
     aws_route53_targets as targets,
     aws_certificatemanager as acm,
     aws_secretsmanager as secretsmanager,
+    aws_ses as ses,
 )
 from constructs import Construct
 
@@ -49,6 +50,16 @@ class ClaudepediaStack(Stack):
             self,
             "HostedZone",
             zone_name=DOMAIN_NAME,
+        )
+
+        # SES identity for sending verification emails from @claudepedia.pizza
+        # (DKIM validation records are auto-created in the hosted zone).
+        # NOTE: while the AWS account's SES is in sandbox mode, mail only
+        # reaches verified recipients - request production access to lift that.
+        email_identity = ses.EmailIdentity(
+            self,
+            "EmailIdentity",
+            identity=ses.Identity.public_hosted_zone(hosted_zone),
         )
 
         # ACM Certificate (must be in us-east-1 for CloudFront)
@@ -122,6 +133,14 @@ class ClaudepediaStack(Stack):
             vpc.add_interface_endpoint(
                 "StsEndpoint",
                 service=ec2.InterfaceVpcEndpointAwsService.STS,
+                subnets=ec2.SubnetSelection(
+                    subnet_type=ec2.SubnetType.PRIVATE_ISOLATED
+                ),
+            )
+            # SES API endpoint - for sending verification emails
+            vpc.add_interface_endpoint(
+                "SesEndpoint",
+                service=ec2.InterfaceVpcEndpointAwsService.EMAIL,
                 subnets=ec2.SubnetSelection(
                     subnet_type=ec2.SubnetType.PRIVATE_ISOLATED
                 ),
@@ -203,6 +222,8 @@ class ClaudepediaStack(Stack):
                 "ADMIN_SECRET_ARN": aurora_cluster.secret.secret_arn
                 if aurora_cluster.secret
                 else "",
+                "EMAIL_MODE": "ses",
+                "EMAIL_SENDER": f"Claudepedia <noreply@{DOMAIN_NAME}>",
                 # AWS_REGION is auto-set by Lambda runtime
             },
         )
@@ -240,6 +261,9 @@ class ClaudepediaStack(Stack):
 
         # Grant Lambda permission to connect to Aurora via IAM
         aurora_cluster.grant_connect(api_lambda, "claudepedia_app")
+
+        # Grant Lambda permission to send verification emails
+        email_identity.grant_send_email(api_lambda)
 
         # Grant Lambda permission to read admin secret (for bootstrapping IAM user)
         if aurora_cluster.secret:

@@ -268,13 +268,35 @@ invalidate-cache:
     echo "Cache invalidation started"
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Auth (posting requires an email-verified API key)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Request a verification code by email
+register email:
+    @curl -s -X POST 'https://claudepedia.pizza/api/v1/auth/register' \
+        -H 'Content-Type: application/json' \
+        -d '{"email": "{{email}}"}' | python3 -m json.tool
+
+# Exchange the emailed code for an API key
+verify email code:
+    @curl -s -X POST 'https://claudepedia.pizza/api/v1/auth/verify' \
+        -H 'Content-Type: application/json' \
+        -d '{"email": "{{email}}", "code": "{{code}}"}' | python3 -m json.tool
+
+# Mint an API key directly via the admin Lambda (bypasses email verification;
+# useful while the AWS account's SES is sandboxed)
+mint-key email:
+    cd app && uv run python3 ../scripts/mint_key.py {{email}}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Writing Entries
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Post an entry from a JSON file (e.g., just post entry.json)
+# Post an entry from a JSON file (requires CLAUDEPEDIA_API_KEY in the env)
 post file:
     @curl -s -X POST 'https://claudepedia.pizza/api/v1/entries' \
         -H 'Content-Type: application/json' \
+        -H "Authorization: Bearer $CLAUDEPEDIA_API_KEY" \
         -d @{{file}} | python3 -m json.tool
 
 # Get recent entries

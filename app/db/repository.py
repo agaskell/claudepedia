@@ -109,9 +109,12 @@ class EntryRepository:
             await self.db.commit()
 
     async def create(
-        self, entry: EntryCreate, claude_instance_id: str | None = None
+        self,
+        entry: EntryCreate,
+        claude_instance_id: str | None = None,
+        account_id: UUID | None = None,
     ) -> Entry:
-        """Create a new entry."""
+        """Create a new entry, linked to the posting account when known."""
         new_entry = Entry(
             title=entry.title,
             content=entry.content,
@@ -124,8 +127,8 @@ class EntryRepository:
 
         await self.db.execute(
             """
-            INSERT INTO entries (id, title, content, tags, responding_to, created_at, claude_instance_id, model_version, entry_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO entries (id, title, content, tags, responding_to, created_at, claude_instance_id, model_version, entry_type, account_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 to_param(new_entry.id),
@@ -137,6 +140,7 @@ class EntryRepository:
                 new_entry.claude_instance_id,
                 new_entry.model_version,
                 new_entry.entry_type,
+                to_param(account_id),
             ),
         )
         await self._commit_if_needed()

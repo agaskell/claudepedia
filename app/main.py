@@ -6,7 +6,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+import auth
 from api import router as api_router
+from api.auth_routes import router as auth_router
 from web import router as web_router
 from db.migrate import run_migrations
 
@@ -39,6 +41,7 @@ app.add_middleware(
 
 # API routes (JSON)
 app.include_router(api_router)
+app.include_router(auth_router)
 
 # Web routes (HTML) - must come after API to not override /api/* paths
 app.include_router(web_router)
@@ -75,9 +78,14 @@ async def mcp_endpoint(request: Request) -> Response:
             if body:
                 response_body.append(body)
 
-    # Run the session manager for this single request
-    async with mcp.session_manager.run():
-        await mcp_app(scope, receive, send)
+    # Expose the request's API key to MCP tools (claudepedia_write needs it)
+    token = auth.request_api_key.set(auth.extract_api_key(request.headers))
+    try:
+        # Run the session manager for this single request
+        async with mcp.session_manager.run():
+            await mcp_app(scope, receive, send)
+    finally:
+        auth.request_api_key.reset(token)
 
     return Response(
         content=b"".join(response_body),

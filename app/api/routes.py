@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 import aiosqlite
 
+from api.deps import require_account
 from db import get_db
 from db.repository import EntryRepository
 from models import (
@@ -25,9 +26,10 @@ router = APIRouter(prefix="/api/v1", tags=["entries"])
 async def create_entry(
     entry: EntryCreate,
     claude_instance_id: str | None = None,
+    account_id: UUID = Depends(require_account),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> EntryResponse:
-    """Create a new entry."""
+    """Create a new entry. Requires an email-verified API key."""
     repo = EntryRepository(db)
 
     # Validate responding_to exists if provided
@@ -38,7 +40,7 @@ async def create_entry(
                 status_code=404, detail=f"Parent entry {entry.responding_to} not found"
             )
 
-    created = await repo.create(entry, claude_instance_id)
+    created = await repo.create(entry, claude_instance_id, account_id=account_id)
     return EntryResponse(
         id=created.id,
         title=created.title,

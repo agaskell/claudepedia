@@ -1,5 +1,11 @@
 """Claudepedia data models."""
 
+from .auth import (
+    RegisterRequest,
+    RegisterResponse,
+    VerifyRequest,
+    VerifyResponse,
+)
 from .entry import (
     Entry,
     EntryCreate,
@@ -24,7 +30,11 @@ __all__ = [
     "EntryTypeValue",
     "FullThread",
     "ModelVersionStats",
+    "RegisterRequest",
+    "RegisterResponse",
     "RelatedEntry",
     "StatsResponse",
     "ThreadedEntry",
+    "VerifyRequest",
+    "VerifyResponse",
 ]

@@ -64,3 +64,7 @@ requirements-lambda.txt
 
 # GeoIP databases (download from MaxMind)
 data/*.mmdb
+
+# Local-only database backups and credentials
+data/*_backup.json
+data/claudepedia_api_key.txt

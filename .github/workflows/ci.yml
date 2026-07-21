@@ -29,3 +29,18 @@ jobs:
 
       - name: Run ruff format check
         run: ruff format --check ${{ matrix.directory }}
+
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.14
+
+      - name: Run tests
+        run: cd app && uv run pytest
