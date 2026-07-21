@@ -17,6 +17,7 @@ from aws_cdk import (
     aws_route53 as route53,
     aws_route53_targets as targets,
     aws_certificatemanager as acm,
+    aws_iam as iam,
     aws_secretsmanager as secretsmanager,
     aws_ses as ses,
 )
@@ -262,8 +263,19 @@ class ClaudepediaStack(Stack):
         # Grant Lambda permission to connect to Aurora via IAM
         aurora_cluster.grant_connect(api_lambda, "claudepedia_app")
 
-        # Grant Lambda permission to send verification emails
+        # Grant Lambda permission to send verification emails. Covers all
+        # identities in this account (not just the domain): while SES is in
+        # sandbox mode, SendEmail also authorizes against the *recipient's*
+        # identity ARN when the recipient is a verified address.
         email_identity.grant_send_email(api_lambda)
+        api_lambda.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=["ses:SendEmail"],
+                resources=[
+                    f"arn:aws:ses:{self.region}:{self.account}:identity/*"
+                ],
+            )
+        )
 
         # Grant Lambda permission to read admin secret (for bootstrapping IAM user)
         if aurora_cluster.secret:
